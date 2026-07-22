@@ -66,6 +66,24 @@ const Store = (() => {
     return apiRequest('api/trades.php', 'POST', trade);
   }
 
+  function uploadTradesCsv(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'api/trades_upload.php', false); // Synchronous API call matching Store style
+    xhr.send(formData);
+
+    if (xhr.status >= 200 && xhr.status < 500) {
+      try {
+        return JSON.parse(xhr.responseText);
+      } catch (e) {
+        return { ok: false, error: 'Invalid response from server.' };
+      }
+    }
+    return { ok: false, error: 'Upload failed with status ' + xhr.status };
+  }
+
   // ---------------------------------------------------------------
   // Reconciliation API
   // ---------------------------------------------------------------
@@ -119,6 +137,7 @@ const Store = (() => {
     requireAuth,
     getTrades,
     addTrade,
+    uploadTradesCsv,
     runReconciliation,
     getRuns,
     getExceptions,
