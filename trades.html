@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trades · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text"><strong>LedgerChain</strong><span>Recon System</span></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
+      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
+      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
+      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip" id="sessionChip">--</div>
+      <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
+      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head fade-up">
+      <div>
+        <p class="page-eyebrow">Ledger</p>
+        <h1 class="page-title">Trades</h1>
+        <p class="page-sub">Trade records ingested from every connected source system.</p>
+      </div>
+      <button class="btn btn-primary" id="openAddTrade">+ Add trade</button>
+    </div>
+
+    <div class="filter-bar fade-up" style="animation-delay:.05s;">
+      <select id="filterSource">
+        <option value="">All sources</option>
+        <option value="Internal">Internal</option>
+        <option value="BrokerA">BrokerA</option>
+      </select>
+      <input type="text" id="filterSymbol" placeholder="Filter by symbol…">
+      <div class="spacer"></div>
+      <span class="text-faint mono" id="tradeCount" style="font-size:12px;"></span>
+    </div>
+
+    <div class="table-wrap fade-up" style="animation-delay:.1s;" id="tableContainer">
+      <table id="tradesTable">
+        <thead>
+          <tr>
+            <th>Trade ID</th><th>Source</th><th>Symbol</th><th>Side</th>
+            <th>Qty</th><th>Price</th><th>Trade date</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tradesBody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Add trade modal -->
+<div class="modal-backdrop hidden" id="addTradeModal">
+  <div class="modal">
+    <h3>Add trade record</h3>
+    <p class="modal-sub">Manually record a trade from a source system. In production this would also support CSV upload.</p>
+    <form id="addTradeForm">
+      <div class="form-grid">
+        <div class="form-row">
+          <label for="f_external_id">External trade ID</label>
+          <input type="text" id="f_external_id" placeholder="TRX-1006" required>
+        </div>
+        <div class="form-row">
+          <label for="f_source">Source system</label>
+          <select id="f_source" required>
+            <option value="Internal">Internal</option>
+            <option value="BrokerA">BrokerA</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="f_symbol">Symbol</label>
+          <input type="text" id="f_symbol" placeholder="AAPL" required style="text-transform:uppercase;">
+        </div>
+        <div class="form-row">
+          <label for="f_side">Side</label>
+          <select id="f_side" required>
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="f_qty">Quantity</label>
+          <input type="number" id="f_qty" min="1" required>
+        </div>
+        <div class="form-row">
+          <label for="f_price">Price</label>
+          <input type="number" id="f_price" min="0" step="0.01" required>
+        </div>
+        <div class="form-row" style="grid-column:1/-1;">
+          <label for="f_date">Trade date</label>
+          <input type="date" id="f_date" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelAddTrade">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save trade</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+  initShell('trades');
+
+  const body = document.getElementById('tradesBody');
+  const tableEl = document.getElementById('tradesTable');
+  const containerEl = document.getElementById('tableContainer');
+  const filterSource = document.getElementById('filterSource');
+  const filterSymbol = document.getElementById('filterSymbol');
+  const countEl = document.getElementById('tradeCount');
+
+  let currentTradesList = [];
+
+  function getFilteredTrades() {
+    let trades = Store.getTrades();
+    const src = filterSource.value;
+    const sym = filterSymbol.value.trim().toUpperCase();
+    if (src) trades = trades.filter(t => t.source_system === src);
+    if (sym) trades = trades.filter(t => t.symbol.toUpperCase().includes(sym));
+
+    countEl.textContent = trades.length + ' record(s)';
+    currentTradesList = trades;
+    return currentTradesList;
+  }
+
+  function renderRows(rows) {
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">▤</div><p>No trades match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(t => `
+      <tr>
+        <td class="mono">${escapeHtml(t.external_trade_id)}</td>
+        <td>${escapeHtml(t.source_system)}</td>
+        <td class="mono">${escapeHtml(t.symbol)}</td>
+        <td>${escapeHtml(t.side)}</td>
+        <td class="num">${t.quantity}</td>
+        <td class="num">${Number(t.price).toFixed(2)}</td>
+        <td class="mono text-dim">${escapeHtml(t.trade_date)}</td>
+        <td>${pillForStatus(t.status)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Setup reusable pagination and sortable columns (Part B.5 & B.6)
+  const paginator = makePaginated({
+    container: containerEl,
+    getData: getFilteredTrades,
+    renderRows: renderRows,
+    pageSize: 10
+  });
+
+  makeSortable(
+    tableEl,
+    currentTradesList,
+    (sorted) => {
+      currentTradesList = sorted;
+      paginator.refresh();
+    },
+    ['external_trade_id', 'source_system', 'symbol', 'side', 'quantity', 'price', 'trade_date', 'status']
+  );
+
+  filterSource.addEventListener('change', () => paginator.refresh());
+  filterSymbol.addEventListener('input', () => paginator.refresh());
+
+  const modal = document.getElementById('addTradeModal');
+  document.getElementById('openAddTrade').addEventListener('click', () => modal.classList.remove('hidden'));
+  document.getElementById('cancelAddTrade').addEventListener('click', () => modal.classList.add('hidden'));
+
+  document.getElementById('addTradeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    Store.addTrade({
+      external_trade_id: document.getElementById('f_external_id').value.trim(),
+      source_system: document.getElementById('f_source').value,
+      symbol: document.getElementById('f_symbol').value.trim().toUpperCase(),
+      side: document.getElementById('f_side').value,
+      quantity: Number(document.getElementById('f_qty').value),
+      price: Number(document.getElementById('f_price').value),
+      trade_date: document.getElementById('f_date').value
+    });
+    modal.classList.add('hidden');
+    e.target.reset();
+    paginator.refresh();
+    toast('Trade added.');
+  });
+</script>
+</body>
+</html>

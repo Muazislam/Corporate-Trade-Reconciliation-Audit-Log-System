@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Log · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text"><strong>LedgerChain</strong><span>Recon System</span></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
+      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
+      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
+      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip" id="sessionChip">--</div>
+      <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
+      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head fade-up">
+      <div>
+        <p class="page-eyebrow">Immutable record</p>
+        <h1 class="page-title">Audit Log</h1>
+        <p class="page-sub">Every action in the system, chained by hash so tampering with history is detectable.</p>
+      </div>
+      <button class="btn btn-primary" id="verifyBtn">Verify chain integrity</button>
+    </div>
+
+    <div class="card hidden fade-up" id="verifyCard">
+      <div class="chain-banner" id="chainBanner"></div>
+      <div class="chain-strip" id="chainStrip"></div>
+    </div>
+
+    <div class="card fade-up" style="animation-delay:.05s;">
+      <div class="filter-bar" style="margin-bottom:14px;">
+        <select id="filterAction">
+          <option value="">All actions</option>
+        </select>
+        <input type="text" id="filterActor" placeholder="Filter by actor…">
+        <div class="spacer"></div>
+        <span class="text-faint mono" id="logCount" style="font-size:12px;"></span>
+      </div>
+      <div class="table-wrap" id="tableContainer">
+        <table id="auditTable">
+          <thead>
+            <tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th><th>Hash</th></tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+  initShell('audit');
+
+  const filterAction = document.getElementById('filterAction');
+  const filterActor = document.getElementById('filterActor');
+  const logBody = document.getElementById('logBody');
+  const tableEl = document.getElementById('auditTable');
+  const containerEl = document.getElementById('tableContainer');
+  const logCount = document.getElementById('logCount');
+
+  let currentAuditList = [];
+
+  function populateActionFilter() {
+    const actions = [...new Set(Store.getAuditLog().map(a => a.action))];
+    filterAction.innerHTML = '<option value="">All actions</option>' +
+      actions.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a.replaceAll('_',' '))}</option>`).join('');
+  }
+
+  function getFilteredAuditLogs() {
+    let log = Store.getAuditLog().slice().reverse();
+    if (filterAction.value) log = log.filter(a => a.action === filterAction.value);
+    const actorQuery = filterActor.value.trim().toLowerCase();
+    if (actorQuery) log = log.filter(a => a.actor.toLowerCase().includes(actorQuery));
+
+    logCount.textContent = log.length + ' entries';
+    currentAuditList = log;
+    return currentAuditList;
+  }
+
+  function renderPageRows(rows) {
+    if (!rows.length) {
+      logBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">≡</div><p>No matching audit entries.</p></div></td></tr>`;
+      return;
+    }
+
+    logBody.innerHTML = rows.map(a => `
+      <tr>
+        <td class="mono text-dim">${formatDateTime(a.timestamp)}</td>
+        <td>${escapeHtml(a.actor)}</td>
+        <td class="mono">${escapeHtml(a.action)}</td>
+        <td class="text-dim">${escapeHtml(a.entity_type)} · ${escapeHtml(a.entity_id)}</td>
+        <td class="text-dim">${escapeHtml(a.details)}</td>
+        <td class="mono text-faint" title="${escapeHtml(a.hash)}">${escapeHtml(a.hash.slice(0,8))}…</td>
+      </tr>
+    `).join('');
+  }
+
+  // Setup reusable pagination and column sorting (Part B.5 & B.6)
+  const paginator = makePaginated({
+    container: containerEl,
+    getData: getFilteredAuditLogs,
+    renderRows: renderPageRows,
+    pageSize: 10
+  });
+
+  makeSortable(
+    tableEl,
+    currentAuditList,
+    (sorted) => {
+      currentAuditList = sorted;
+      paginator.refresh();
+    },
+    ['timestamp', 'actor', 'action', 'entity_type', 'details', 'hash']
+  );
+
+  document.getElementById('verifyBtn').addEventListener('click', () => {
+    const { intact, results } = Store.verifyAuditChain();
+
+    const card = document.getElementById('verifyCard');
+    const banner = document.getElementById('chainBanner');
+    const strip = document.getElementById('chainStrip');
+    card.classList.remove('hidden');
+
+    banner.className = 'chain-banner ' + (intact ? 'ok' : 'bad');
+    banner.textContent = intact
+      ? `Chain verified — all ${results.length} entries are intact and in order.`
+      : `Integrity check failed — the hash chain has been broken. History may have been altered.`;
+
+    if (!results.length) {
+      strip.innerHTML = `<span class="text-faint" style="font-size:12.5px;">No entries to verify yet.</span>`;
+    } else {
+      strip.innerHTML = results.map(r => `
+        <div class="chain-node">
+          <div class="chain-line ${r.verified ? '' : 'broken'}"></div>
+          <div class="chain-dot ${r.verified ? '' : 'broken'}" title="${escapeHtml(r.action)}"></div>
+          <div class="chain-hash">${escapeHtml(r.hash.slice(0,6))}</div>
+        </div>
+      `).join('');
+    }
+
+    toast(intact ? 'Audit chain verified successfully.' : 'Audit chain integrity check failed.', intact ? undefined : 'error');
+  });
+
+  filterAction.addEventListener('change', () => paginator.refresh());
+  filterActor.addEventListener('input', () => paginator.refresh());
+
+  populateActionFilter();
+</script>
+</body>
+</html>

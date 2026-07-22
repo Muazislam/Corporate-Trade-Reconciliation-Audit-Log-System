@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reconciliation · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0F1C'/%3E%3Ctext x='16' y='21' fill='%233DD9C0' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text"><strong>LedgerChain</strong><span>Recon System</span></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
+      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
+      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
+      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip" id="sessionChip">--</div>
+      <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
+      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <p class="page-eyebrow">Engine</p>
+        <h1 class="page-title">Reconciliation</h1>
+        <p class="page-sub">Compare trade records between two source systems and surface discrepancies.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Run a new reconciliation</h2>
+      <form id="runForm" class="form-grid" style="align-items:end;">
+        <div class="form-row">
+          <label for="sourceA">Source A</label>
+          <select id="sourceA">
+            <option value="Internal">Internal</option>
+            <option value="BrokerA">BrokerA</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="sourceB">Source B</label>
+          <select id="sourceB">
+            <option value="BrokerA">BrokerA</option>
+            <option value="Internal">Internal</option>
+          </select>
+        </div>
+        <div class="form-row" style="grid-column:1/-1;">
+          <button type="submit" class="btn btn-primary">Run reconciliation</button>
+          <span class="hint">Matches by external trade ID, then checks quantity and price for each pair.</span>
+        </div>
+      </form>
+    </div>
+
+    <div class="card hidden" id="resultCard">
+      <h2 class="section-title">Latest run result</h2>
+      <div class="stat-grid" style="margin-bottom:0;">
+        <div class="stat-card">
+          <div class="stat-label">Compared</div>
+          <div class="stat-value" id="resCompared">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Matched</div>
+          <div class="stat-value accent" id="resMatched">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Exceptions raised</div>
+          <div class="stat-value warn" id="resExceptions">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Match rate</div>
+          <div class="stat-value" id="resRate">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <h2 class="section-title">Run history</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th></tr>
+          </thead>
+          <tbody id="runsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Confirm exceptions modal -->
+<div class="modal-backdrop hidden" id="confirmExceptionsModal">
+  <div class="modal">
+    <h3>Exceptions raised</h3>
+    <p class="modal-sub" id="confirmExceptionsText"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancelExceptionsBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="viewExceptionsBtn">View exceptions</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+  initShell('reconciliation');
+
+  function renderRuns() {
+    const runs = Store.getRuns();
+    const body = document.getElementById('runsBody');
+    if (!runs.length) {
+      body.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
+      return;
+    }
+    body.innerHTML = runs.map(r => `
+      <tr>
+        <td class="mono text-dim">${formatDateTime(r.run_date)}</td>
+        <td>${escapeHtml(r.source_a)} → ${escapeHtml(r.source_b)}</td>
+        <td class="num">${r.total_compared}</td>
+        <td class="num">${r.matched_count}</td>
+        <td class="num">${r.mismatched_count}</td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('runForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sourceA = document.getElementById('sourceA').value;
+    const sourceB = document.getElementById('sourceB').value;
+    if (sourceA === sourceB) {
+      toast('Choose two different sources to compare.', 'error');
+      return;
+    }
+
+    // TODO(PHP): replace with fetch('api/reconciliation.php', { method:'POST', body: JSON.stringify({sourceA, sourceB}) })
+    const run = Store.runReconciliation(sourceA, sourceB);
+
+    document.getElementById('resultCard').classList.remove('hidden');
+    document.getElementById('resCompared').textContent = run.total_compared;
+    document.getElementById('resMatched').textContent = run.matched_count;
+    document.getElementById('resExceptions').textContent = run.mismatched_count;
+    const rate = run.total_compared ? Math.round((run.matched_count / (run.matched_count + run.mismatched_count || 1)) * 100) : 0;
+    document.getElementById('resRate').textContent = rate + '%';
+
+    renderRuns();
+    toast(`Run complete — ${run.matched_count} matched, ${run.mismatched_count} exception(s).`);
+
+    if (run.mismatched_count > 0) {
+      setTimeout(() => {
+        const modal = document.getElementById('confirmExceptionsModal');
+        const text = document.getElementById('confirmExceptionsText');
+        text.textContent = `${run.mismatched_count} exception(s) were raised. View them now?`;
+        modal.classList.remove('hidden');
+      }, 300);
+    }
+  });
+
+  document.getElementById('cancelExceptionsBtn').addEventListener('click', () => {
+    document.getElementById('confirmExceptionsModal').classList.add('hidden');
+  });
+  document.getElementById('viewExceptionsBtn').addEventListener('click', () => {
+    window.location.href = 'exceptions.html';
+  });
+
+  renderRuns();
+</script>
+</body>
+</html>

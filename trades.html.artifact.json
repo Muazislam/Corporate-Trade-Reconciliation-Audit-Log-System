@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "trades.html",
+  "entry": "trades.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-07-22T02:07:06.176Z",
+  "updatedAt": "2026-07-22T02:07:06.176Z",
+  "metadata": {
+    "inferred": true,
+    "reconciled": true
+  }
+}

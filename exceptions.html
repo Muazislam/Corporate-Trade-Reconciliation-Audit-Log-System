@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exceptions · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text"><strong>LedgerChain</strong><span>Recon System</span></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
+      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
+      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
+      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip" id="sessionChip">--</div>
+      <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
+      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head fade-up">
+      <div>
+        <p class="page-eyebrow">Review queue</p>
+        <h1 class="page-title">Exceptions</h1>
+        <p class="page-sub">Discrepancies raised by reconciliation runs. Every resolution requires a note.</p>
+      </div>
+    </div>
+
+    <div class="filter-bar fade-up" style="animation-delay:.05s;">
+      <select id="filterStatus">
+        <option value="">All statuses</option>
+        <option value="OPEN">Open</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="IGNORED">Ignored</option>
+      </select>
+      <select id="filterType">
+        <option value="">All types</option>
+        <option value="AMOUNT_MISMATCH">Amount mismatch</option>
+        <option value="QTY_MISMATCH">Quantity mismatch</option>
+        <option value="MISSING_IN_INTERNAL">Missing in Internal</option>
+        <option value="MISSING_IN_BROKERA">Missing in BrokerA</option>
+      </select>
+      <div class="spacer"></div>
+      <span class="text-faint mono" id="excCount" style="font-size:12px;"></span>
+    </div>
+
+    <div class="table-wrap fade-up" style="animation-delay:.1s;" id="tableContainer">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th><th>Type</th><th>Source A</th><th>Source B</th>
+            <th>Raised</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="excBody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Resolve modal -->
+<div class="modal-backdrop hidden" id="resolveModal">
+  <div class="modal">
+    <h3>Resolve exception</h3>
+    <p class="modal-sub" id="resolveSub"></p>
+    <div class="card" style="background:var(--surface-2); padding:12px 14px; margin-bottom:14px;">
+      <div id="resolveCompare" class="mono" style="font-size:12px; line-height:1.8;"></div>
+    </div>
+    <div class="form-row">
+      <label for="resolveNote">Resolution note (required)</label>
+      <textarea id="resolveNote" placeholder="Explain what was found and how it was resolved…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cancelResolve">Cancel</button>
+      <button type="button" class="btn" id="ignoreBtn">Mark ignored</button>
+      <button type="button" class="btn btn-primary" id="resolveBtn">Mark resolved</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+  initShell('exceptions');
+
+  let activeId = null;
+  const filterStatus = document.getElementById('filterStatus');
+  const filterType = document.getElementById('filterType');
+  const excBody = document.getElementById('excBody');
+  const excCount = document.getElementById('excCount');
+  const containerEl = document.getElementById('tableContainer');
+
+  function getFilteredExceptions() {
+    let list = Store.getExceptions().slice().reverse();
+    if (filterStatus.value) list = list.filter(e => e.status === filterStatus.value);
+    if (filterType.value) list = list.filter(e => e.exception_type === filterType.value);
+
+    excCount.textContent = list.length + ' record(s)';
+    return list;
+  }
+
+  function renderPageRows(rows) {
+    if (!rows.length) {
+      excBody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">⚠</div><p>No exceptions match these filters.</p></div></td></tr>`;
+      return;
+    }
+
+    excBody.innerHTML = rows.map(e => `
+      <tr>
+        <td class="mono">${escapeHtml(e.symbol)}</td>
+        <td>${pillForExceptionType(e.exception_type)}</td>
+        <td>${e.snapshot_a ? `${e.snapshot_a.quantity} @ ${Number(e.snapshot_a.price).toFixed(2)}` : '<span class="text-faint">missing</span>'}</td>
+        <td>${e.snapshot_b ? `${e.snapshot_b.quantity} @ ${Number(e.snapshot_b.price).toFixed(2)}` : '<span class="text-faint">missing</span>'}</td>
+        <td class="mono text-dim">${formatDateTime(e.created_at)}</td>
+        <td>${pillForStatus(e.status)}</td>
+        <td>${e.status === 'OPEN' ? `<button class="btn btn-sm" data-open="${e.id}">Review</button>` : `<span class="text-faint" style="font-size:12px;">${escapeHtml(e.resolution_note || '')}</span>`}</td>
+      </tr>
+    `).join('');
+
+    excBody.querySelectorAll('[data-open]').forEach(btn => {
+      btn.addEventListener('click', () => openResolve(btn.dataset.open));
+    });
+  }
+
+  // Setup reusable pagination (Part B.6)
+  const paginator = makePaginated({
+    container: containerEl,
+    getData: getFilteredExceptions,
+    renderRows: renderPageRows,
+    pageSize: 10
+  });
+
+  function openResolve(id) {
+    const e = Store.getExceptions().find(x => x.id === id);
+    if (!e) return;
+    activeId = id;
+    document.getElementById('resolveSub').textContent =
+      `${e.exception_type.replaceAll('_',' ')} · ${e.symbol} · ${e.source_a} vs ${e.source_b}`;
+    document.getElementById('resolveCompare').innerHTML = `
+      <div>Source A (${escapeHtml(e.source_a)}): ${e.snapshot_a ? `qty ${e.snapshot_a.quantity}, price ${Number(e.snapshot_a.price).toFixed(2)}` : '<span class="text-faint">no matching record</span>'}</div>
+      <div>Source B (${escapeHtml(e.source_b)}): ${e.snapshot_b ? `qty ${e.snapshot_b.quantity}, price ${Number(e.snapshot_b.price).toFixed(2)}` : '<span class="text-faint">no matching record</span>'}</div>
+    `;
+    document.getElementById('resolveNote').value = '';
+    document.getElementById('resolveModal').classList.remove('hidden');
+  }
+
+  document.getElementById('cancelResolve').addEventListener('click', () => {
+    document.getElementById('resolveModal').classList.add('hidden');
+    activeId = null;
+  });
+
+  function submitResolution(status) {
+    const note = document.getElementById('resolveNote').value.trim();
+    if (!note) {
+      toast('A resolution note is required before closing an exception.', 'error');
+      return;
+    }
+    Store.resolveException(activeId, note, status);
+    document.getElementById('resolveModal').classList.add('hidden');
+    paginator.refresh();
+    toast(status === 'RESOLVED' ? 'Exception marked resolved.' : 'Exception ignored.');
+  }
+
+  document.getElementById('resolveBtn').addEventListener('click', () => submitResolution('RESOLVED'));
+  document.getElementById('ignoreBtn').addEventListener('click', () => submitResolution('IGNORED'));
+
+  filterStatus.addEventListener('change', () => paginator.refresh());
+  filterType.addEventListener('change', () => paginator.refresh());
+</script>
+</body>
+</html>

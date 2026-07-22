@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · LedgerChain Recon</title>
+<meta name="description" content="Real-time reconciliation health overview — LedgerChain Recon System">
+<link rel="icon" type="image/svg+xml"
+  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text">
+        <strong>LedgerChain</strong>
+        <span>Recon System</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
+      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
+      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
+      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user-chip" id="sessionChip">--</div>
+      <div class="who">
+        <strong id="sessionName">—</strong>
+        <span id="sessionRole">—</span>
+      </div>
+      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- Page header -->
+    <div class="page-head fade-up">
+      <div>
+        <p class="page-eyebrow">Overview</p>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Reconciliation health across all connected source systems.</p>
+      </div>
+      <a href="reconciliation.html" class="btn btn-primary">⇄&nbsp; Run reconciliation</a>
+    </div>
+
+    <!-- KPI stat cards -->
+    <div class="stat-grid fade-up" style="animation-delay:.05s">
+
+      <div class="stat-card">
+        <div class="stat-icon teal">▤</div>
+        <div class="stat-label">Total trades</div>
+        <div class="stat-value" id="statTrades">—</div>
+        <div class="stat-delta">Across all sources</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon amber">⚠</div>
+        <div class="stat-label">Open exceptions</div>
+        <div class="stat-value warn" id="statOpenExceptions">—</div>
+        <div class="stat-delta">Awaiting review</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon teal">✓</div>
+        <div class="stat-label">Resolved</div>
+        <div class="stat-value accent" id="statResolvedExceptions">—</div>
+        <div class="stat-delta">Closed with a note</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon blue">⇄</div>
+        <div class="stat-label">Last run</div>
+        <div class="stat-value sm info" id="statLastRun">—</div>
+        <div class="stat-delta" id="statLastRunMeta">No runs yet</div>
+      </div>
+
+    </div>
+
+    <!-- Pure CSS/SVG Sparkline Card: Match rate percentage across last 5 runs -->
+    <div class="card sparkline-card fade-up" style="animation-delay:.08s;">
+      <div class="card-header" style="margin-bottom:12px;">
+        <div>
+          <h2>Match Rate Trend</h2>
+          <div class="chart-subtitle">Match rate percentage across recent reconciliation runs</div>
+        </div>
+        <span class="pill pill-matched" id="latestMatchRatePill">0% match rate</span>
+      </div>
+      <div class="sparkline-bars" id="sparklineBars"></div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="chart-grid fade-up" style="animation-delay:.1s">
+
+      <!-- Chart 1: Exception status donut -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <h2>Exception breakdown</h2>
+            <div class="chart-subtitle">By current status</div>
+          </div>
+        </div>
+        <div class="chart-wrap donut">
+          <canvas id="chartExcStatus"></canvas>
+        </div>
+        <div class="chart-legend" id="legendExcStatus"></div>
+      </div>
+
+      <!-- Chart 2: Trades by source bar -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <h2>Trades by source</h2>
+            <div class="chart-subtitle">Volume per source system</div>
+          </div>
+        </div>
+        <div class="chart-wrap donut">
+          <canvas id="chartTradeSource"></canvas>
+        </div>
+        <div class="chart-legend" id="legendTradeSource"></div>
+      </div>
+
+    </div>
+
+    <!-- Chart 3: Reconciliation run history line — full width -->
+    <div class="chart-card fade-up" style="animation-delay:.15s; margin-bottom:14px;">
+      <div class="card-header">
+        <div>
+          <h2>Reconciliation history</h2>
+          <div class="chart-subtitle">Matched vs. exceptions per run</div>
+        </div>
+        <a href="reconciliation.html" class="card-link">View all →</a>
+      </div>
+      <div class="chart-wrap tall">
+        <canvas id="chartReconHistory"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent runs table -->
+    <div class="card fade-up" style="animation-delay:.2s">
+      <div class="card-header">
+        <h2>Recent reconciliation runs</h2>
+        <a href="reconciliation.html" class="card-link">View all →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Run date</th>
+              <th>Sources compared</th>
+              <th>Compared</th>
+              <th>Matched</th>
+              <th>Exceptions</th>
+            </tr>
+          </thead>
+          <tbody id="runsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent audit activity -->
+    <div class="card fade-up" style="animation-delay:.25s">
+      <div class="card-header">
+        <h2>Recent audit activity</h2>
+        <a href="audit-log.html" class="card-link">View full log →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th></tr>
+          </thead>
+          <tbody id="auditBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script>
+/* ── Init shell (session guard + sidebar) ── */
+initShell('dashboard');
+
+/* ── Load data synchronously from API ── */
+const trades     = Store.getTrades();
+const exceptions = Store.getExceptions();
+const runs       = Store.getRuns();
+const audit      = Store.getAuditLog();
+
+/* ── KPI cards ── */
+document.getElementById('statTrades').textContent = trades.length;
+document.getElementById('statOpenExceptions').textContent     = exceptions.filter(e => e.status === 'OPEN').length;
+document.getElementById('statResolvedExceptions').textContent = exceptions.filter(e => e.status === 'RESOLVED').length;
+
+if (runs.length) {
+  const last = runs[0];
+  document.getElementById('statLastRun').textContent    = last.source_a + ' → ' + last.source_b;
+  document.getElementById('statLastRunMeta').textContent = formatDateTime(last.run_date);
+}
+
+/* ── Chart color palette tokens ── */
+const CHART_COLORS = {
+  c1:  '#7BA7D9',
+  c2:  '#88B68A',
+  c3:  '#E3B26A',
+  c4:  '#A78BC7',
+  c5:  '#72B7B2',
+  c6:  '#D98B84',
+  c7:  '#A8B56A',
+  c8:  '#C997B3',
+  c9:  '#82C7C5',
+  c10: '#D7A66E',
+  c11: '#8FA6D8',
+  c12: '#9CC29C'
+};
+
+/* ── Pure CSS/SVG Sparkline: Match Rate for last 5 runs ── */
+(function renderMatchRateSparkline() {
+  const container = document.getElementById('sparklineBars');
+  const pill = document.getElementById('latestMatchRatePill');
+  if (!runs.length) {
+    container.innerHTML = `<div class="empty-state" style="padding:15px; width:100%;"><p>No reconciliation runs recorded yet.</p></div>`;
+    pill.textContent = 'No runs';
+    return;
+  }
+
+  // Get last 5 runs (in chronological order)
+  const last5 = [...runs].reverse().slice(-5);
+  const latestRun = last5[last5.length - 1];
+  const latestRate = latestRun.total_compared > 0
+    ? Math.round((latestRun.matched_count / (latestRun.matched_count + latestRun.mismatched_count || 1)) * 100)
+    : 0;
+  pill.textContent = `${latestRate}% latest match rate`;
+
+  container.innerHTML = last5.map((r, i) => {
+    const total = r.matched_count + r.mismatched_count;
+    const rate = total > 0 ? Math.round((r.matched_count / total) * 100) : 0;
+    const dateStr = new Date(r.run_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const barColor = rate >= 80 ? 'var(--chart-2)' : (rate >= 50 ? 'var(--chart-3)' : 'var(--chart-6)');
+    const textColor = rate >= 80 ? CHART_COLORS.c2 : (rate >= 50 ? CHART_COLORS.c3 : CHART_COLORS.c6);
+
+    return `
+      <div class="sparkline-bar-wrap" title="${escapeHtml(r.source_a)} vs ${escapeHtml(r.source_b)}: ${rate}% matched (${r.matched_count}/${total})">
+        <div class="sparkline-bar" style="height:${Math.max(8, rate)}%; background:${barColor};"></div>
+        <div class="sparkline-pct" style="color:${textColor};">${rate}%</div>
+        <div class="sparkline-label">${escapeHtml(dateStr)}</div>
+      </div>
+    `;
+  }).join('');
+})();
+
+/* ── Chart.js shared config (Light Theme) ── */
+const FONT_MONO = "'IBM Plex Mono', ui-monospace, monospace";
+Chart.defaults.color = '#706f70';
+Chart.defaults.borderColor = '#d4d8df';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+const gridColor  = '#d4d8df';
+const tickColor  = '#706f70';
+
+function gridConfig() {
+  return {
+    color: gridColor,
+    drawBorder: false,
+  };
+}
+function tooltipDefaults() {
+  return {
+    backgroundColor: '#ffffff',
+    borderColor: '#d4d8df',
+    borderWidth: 1,
+    titleColor: '#080808',
+    bodyColor: '#353536',
+    padding: 10,
+    cornerRadius: 6,
+    titleFont: { size: 11, weight: '600' },
+    bodyFont:  { size: 11 },
+  };
+}
+
+/* ── Chart 1: Exception status donut ── */
+(function() {
+  const open     = exceptions.filter(e => e.status === 'OPEN').length;
+  const resolved = exceptions.filter(e => e.status === 'RESOLVED').length;
+  const ignored  = exceptions.filter(e => e.status === 'IGNORED').length;
+  const total    = open + resolved + ignored;
+
+  const colors = {
+    bg:     ['rgba(227,178,106,0.85)', 'rgba(136,182,138,0.85)', 'rgba(123,167,217,0.75)'],
+    border: [CHART_COLORS.c3, CHART_COLORS.c2, CHART_COLORS.c1],
+  };
+  const labels = ['Open', 'Resolved', 'Ignored'];
+  const data   = [open, resolved, ignored];
+
+  const ctx = document.getElementById('chartExcStatus').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+        borderWidth: 1.5,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipDefaults(),
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw} (${total ? Math.round(ctx.raw/total*100) : 0}%)`
+          }
+        }
+      }
+    }
+  });
+
+  // Build legend
+  const legend = document.getElementById('legendExcStatus');
+  labels.forEach((l, i) => {
+    legend.innerHTML += `<span class="legend-item">
+      <span class="legend-dot" style="background:${colors.border[i]}"></span>${l} <strong style="color:var(--text);margin-left:3px">${data[i]}</strong>
+    </span>`;
+  });
+})();
+
+/* ── Chart 2: Trades by source (horizontal bar) ── */
+(function() {
+  const sourceCounts = {};
+  trades.forEach(t => {
+    sourceCounts[t.source_system] = (sourceCounts[t.source_system] || 0) + 1;
+  });
+  const sources = Object.keys(sourceCounts);
+  const counts  = sources.map(s => sourceCounts[s]);
+  const palette = ['rgba(123,167,217,0.8)', 'rgba(114,183,178,0.8)', 'rgba(167,139,199,0.8)', 'rgba(168,181,106,0.8)'];
+  const borders = [CHART_COLORS.c1, CHART_COLORS.c5, CHART_COLORS.c4, CHART_COLORS.c7];
+
+  const ctx = document.getElementById('chartTradeSource').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: [{
+        label: 'Trades',
+        data: counts,
+        backgroundColor: sources.map((_, i) => palette[i % palette.length]),
+        borderColor:     sources.map((_, i) => borders[i % borders.length]),
+        borderWidth: 1.5,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          grid: gridConfig(),
+          ticks: { color: tickColor, font: { family: FONT_MONO, size: 10 }, stepSize: 1 },
+          border: { display: false },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#353536', font: { size: 11, weight: '500' } },
+          border: { display: false },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: tooltipDefaults(),
+      }
+    }
+  });
+
+  const legend = document.getElementById('legendTradeSource');
+  sources.forEach((s, i) => {
+    legend.innerHTML += `<span class="legend-item">
+      <span class="legend-dot" style="background:${borders[i % borders.length]}"></span>${s}
+      <strong style="color:var(--text);margin-left:3px">${counts[i]}</strong>
+    </span>`;
+  });
+})();
+
+/* ── Chart 3: Reconciliation history line ── */
+(function() {
+  if (!runs.length) {
+    const wrap = document.getElementById('chartReconHistory').closest('.chart-wrap');
+    wrap.innerHTML = `<div class="empty-state" style="padding:30px 20px;"><div class="glyph">⇄</div><p>No reconciliation runs yet.</p></div>`;
+    return;
+  }
+
+  const recent = [...runs].reverse().slice(-10);
+  const labels = recent.map((r, i) => {
+    const d = new Date(r.run_date);
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  });
+
+  const ctx = document.getElementById('chartReconHistory').getContext('2d');
+
+  // Gradient fills
+  const gradientMatched = ctx.createLinearGradient(0, 0, 0, 240);
+  gradientMatched.addColorStop(0, 'rgba(114,183,178,0.3)');
+  gradientMatched.addColorStop(1, 'rgba(114,183,178,0)');
+
+  const gradientExc = ctx.createLinearGradient(0, 0, 0, 240);
+  gradientExc.addColorStop(0, 'rgba(217,139,132,0.3)');
+  gradientExc.addColorStop(1, 'rgba(217,139,132,0)');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Matched',
+          data: recent.map(r => r.matched_count),
+          borderColor: CHART_COLORS.c5,
+          backgroundColor: gradientMatched,
+          borderWidth: 2,
+          pointBackgroundColor: CHART_COLORS.c5,
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.35,
+        },
+        {
+          label: 'Exceptions',
+          data: recent.map(r => r.mismatched_count),
+          borderColor: CHART_COLORS.c6,
+          backgroundColor: gradientExc,
+          borderWidth: 2,
+          pointBackgroundColor: CHART_COLORS.c6,
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: true,
+          tension: 0.35,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: tickColor, font: { size: 10, family: FONT_MONO } },
+          border: { display: false },
+        },
+        y: {
+          grid: gridConfig(),
+          ticks: { color: tickColor, font: { size: 10, family: FONT_MONO }, stepSize: 1 },
+          border: { display: false },
+          beginAtZero: true,
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            color: '#353536',
+            boxWidth: 8,
+            boxHeight: 8,
+            borderRadius: 2,
+            useBorderRadius: true,
+            font: { size: 11, weight: '500' },
+            padding: 16,
+          }
+        },
+        tooltip: tooltipDefaults(),
+      }
+    }
+  });
+})();
+
+/* ── Recent runs table ── */
+const runsBody = document.getElementById('runsBody');
+if (!runs.length) {
+  runsBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet.</p></div></td></tr>`;
+} else {
+  runsBody.innerHTML = runs.slice(0, 5).map(r => `
+    <tr>
+      <td class="mono text-dim" style="font-size:11.5px">${formatDateTime(r.run_date)}</td>
+      <td>${escapeHtml(r.source_a)}<span style="color:var(--text-faint);margin:0 6px">→</span>${escapeHtml(r.source_b)}</td>
+      <td class="num">${r.total_compared}</td>
+      <td class="num accent-text">${r.matched_count}</td>
+      <td class="num" style="color:${r.mismatched_count > 0 ? 'var(--warn)' : 'var(--text-dim)'}">${r.mismatched_count}</td>
+    </tr>
+  `).join('');
+}
+
+/* ── Recent audit activity table ── */
+const auditBody = document.getElementById('auditBody');
+if (!audit.length) {
+  auditBody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="glyph">≡</div><p>No activity recorded yet.</p></div></td></tr>`;
+} else {
+  auditBody.innerHTML = audit.slice(-6).reverse().map(a => `
+    <tr>
+      <td class="mono text-dim" style="font-size:11px">${formatDateTime(a.timestamp)}</td>
+      <td style="font-weight:500">${escapeHtml(a.actor)}</td>
+      <td><code style="font-family:var(--font-mono);font-size:11px;background:var(--surface-2);padding:2px 6px;border-radius:4px;color:var(--text-body)">${escapeHtml(a.action)}</code></td>
+      <td class="text-dim" style="font-size:12px">${escapeHtml(a.entity_type)}<span style="color:var(--text-faint);margin:0 4px">·</span><span class="mono" style="font-size:11px">${escapeHtml(a.entity_id)}</span></td>
+    </tr>
+  `).join('');
+}
+</script>
+</body>
+</html>
