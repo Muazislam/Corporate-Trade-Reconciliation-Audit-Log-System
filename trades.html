@@ -26,6 +26,7 @@
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
       <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
+      <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
       <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
     </div>
   </aside>
@@ -130,7 +131,7 @@
       </div>
       <div id="uploadSummary" class="hidden" style="margin-top:12px;">
         <div id="uploadSummaryText" class="mono" style="font-size:12px; margin-bottom:8px; font-weight:600;"></div>
-        <div id="uploadErrorsList" class="mono text-dim" style="font-size:11px; max-height:120px; overflow-y:auto; background:var(--surface-2); padding:8px 10px; border-radius:var(--radius); border:1px solid var(--border);"></div>
+        <div id="uploadErrorsList" class="mono text-dim" style="font-size:11px; max-height:120px; overflow-y:auto; background:var(--bg-tertiary); padding:8px 10px; border-radius:var(--radius); border:1px solid var(--border);"></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="cancelUploadCsv">Cancel</button>
@@ -281,5 +282,6 @@
     toast(`CSV uploaded: ${res.imported} imported, ${res.rejected} rejected.`);
   });
 </script>
+<script src="js/theme.js"></script>
 </body>
 </html>

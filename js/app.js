@@ -171,15 +171,15 @@ function makePaginated({ container, getData, renderRows, pageSize = 10 }) {
   const bar = document.createElement('div');
   bar.className = 'pagination';
   bar.innerHTML = `
-    <button class="btn btn-sm btn-ghost" id="_pgPrev">← Prev</button>
-    <span class="page-info" id="_pgInfo"></span>
-    <button class="btn btn-sm btn-ghost" id="_pgNext">Next →</button>
+    <button class="btn btn-sm btn-ghost" data-pg="prev">← Prev</button>
+    <span class="page-info" data-pg="info"></span>
+    <button class="btn btn-sm btn-ghost" data-pg="next">Next →</button>
   `;
   container.appendChild(bar);
 
-  const prevBtn  = bar.querySelector('#_pgPrev');
-  const nextBtn  = bar.querySelector('#_pgNext');
-  const infoSpan = bar.querySelector('#_pgInfo');
+  const prevBtn  = bar.querySelector('[data-pg="prev"]');
+  const nextBtn  = bar.querySelector('[data-pg="next"]');
+  const infoSpan = bar.querySelector('[data-pg="info"]');
 
   function render() {
     const data      = getData();

@@ -10,15 +10,8 @@ $user = requireAuthSession();
 $pdo = getDbConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Support PATCH or POST for resolve action
-if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'resolve')) {
-    $rawInput = file_get_contents('php://input');
-    $input = json_decode($rawInput, true) ?: $_POST;
-
-    $id = trim($_GET['id'] ?? $input['id'] ?? '');
-    $note = trim($input['resolution_note'] ?? $input['note'] ?? '');
-    $newStatus = strtoupper(trim($input['status'] ?? ''));
-
+/* ── Helper: resolve/ignore an exception ───────────────────── */
+function _resolveException($pdo, $user, $id, $note, $newStatus) {
     if (empty($id)) {
         jsonError('Exception ID is required.', 400);
     }
@@ -47,6 +40,16 @@ if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['action']) && $_GE
     appendAuditLog($pdo, $user['name'], $action, 'ReconciliationException', $id, $note);
 
     jsonResponse(['ok' => true, 'id' => $id, 'status' => $newStatus, 'resolution_note' => $note]);
+}
+
+// Support PATCH or POST for resolve action
+if ($method === 'PATCH' || ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'resolve')) {
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: $_POST;
+    $id = trim($_GET['id'] ?? $input['id'] ?? '');
+    $note = trim($input['resolution_note'] ?? $input['note'] ?? '');
+    $newStatus = strtoupper(trim($input['status'] ?? ''));
+    _resolveException($pdo, $user, $id, $note, $newStatus);
 }
 
 // Handle GET: list exceptions with optional filters
@@ -88,44 +91,14 @@ if ($method === 'GET') {
     jsonResponse($exceptions);
 }
 
-// Fallback if POST without action query param was passed for resolve
+// POST without ?action=resolve — also treat as resolve for convenience
 if ($method === 'POST') {
     $rawInput = file_get_contents('php://input');
     $input = json_decode($rawInput, true) ?: $_POST;
-    if (isset($input['id']) || isset($_GET['id'])) {
-        $id = trim($_GET['id'] ?? $input['id'] ?? '');
-        $note = trim($input['resolution_note'] ?? $input['note'] ?? '');
-        $newStatus = strtoupper(trim($input['status'] ?? ''));
-
-        if (empty($id)) {
-            jsonError('Exception ID is required.', 400);
-        }
-        if (empty($note)) {
-            jsonError('A resolution note is required before closing an exception.', 400);
-        }
-        if (!in_array($newStatus, ['RESOLVED', 'IGNORED'], true)) {
-            jsonError('Status must be RESOLVED or IGNORED.', 400);
-        }
-
-        $stmtCheck = $pdo->prepare("SELECT * FROM reconciliation_exceptions WHERE id = ?");
-        $stmtCheck->execute([$id]);
-        $exc = $stmtCheck->fetch();
-
-        if (!$exc) {
-            jsonError('Exception record not found.', 404);
-        }
-
-        $resolvedAt = date('Y-m-d H:i:s');
-        $stmtUpdate = $pdo->prepare(
-            "UPDATE reconciliation_exceptions SET status = ?, resolution_note = ?, resolved_at = ? WHERE id = ?"
-        );
-        $stmtUpdate->execute([$newStatus, $note, $resolvedAt, $id]);
-
-        $action = ($newStatus === 'RESOLVED') ? 'RESOLVE_EXCEPTION' : 'IGNORE_EXCEPTION';
-        appendAuditLog($pdo, $user['name'], $action, 'ReconciliationException', $id, $note);
-
-        jsonResponse(['ok' => true, 'id' => $id, 'status' => $newStatus, 'resolution_note' => $note]);
-    }
+    $id = trim($_GET['id'] ?? $input['id'] ?? '');
+    $note = trim($input['resolution_note'] ?? $input['note'] ?? '');
+    $newStatus = strtoupper(trim($input['status'] ?? ''));
+    _resolveException($pdo, $user, $id, $note, $newStatus);
 }
 
 jsonError('Method not allowed', 450);

@@ -39,6 +39,7 @@
         <strong id="sessionName">—</strong>
         <span id="sessionRole">—</span>
       </div>
+      <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
       <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
     </div>
   </aside>
@@ -263,29 +264,27 @@ const CHART_COLORS = {
   }).join('');
 })();
 
-/* ── Chart.js shared config (Light Theme) ── */
+/* ── Chart.js shared config — reads CSS custom props ── */
 const FONT_MONO = "'IBM Plex Mono', ui-monospace, monospace";
-Chart.defaults.color = '#706f70';
-Chart.defaults.borderColor = '#d4d8df';
+const _root = getComputedStyle(document.documentElement);
+Chart.defaults.color = _root.getPropertyValue('--text-dim').trim() || '#706f70';
+Chart.defaults.borderColor = _root.getPropertyValue('--border').trim() || '#d4d8df';
 Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 Chart.defaults.font.size = 11;
 
-const gridColor  = '#d4d8df';
-const tickColor  = '#706f70';
-
 function gridConfig() {
   return {
-    color: gridColor,
+    color: _root.getPropertyValue('--border').trim() || '#d4d8df',
     drawBorder: false,
   };
 }
 function tooltipDefaults() {
   return {
-    backgroundColor: '#ffffff',
-    borderColor: '#d4d8df',
+    backgroundColor: _root.getPropertyValue('--bg-secondary').trim() || '#ffffff',
+    borderColor: _root.getPropertyValue('--border').trim() || '#d4d8df',
     borderWidth: 1,
-    titleColor: '#080808',
-    bodyColor: '#353536',
+    titleColor: _root.getPropertyValue('--text-primary').trim() || '#080808',
+    bodyColor: _root.getPropertyValue('--text-body').trim() || '#353536',
     padding: 10,
     cornerRadius: 6,
     titleFont: { size: 11, weight: '600' },
@@ -340,7 +339,7 @@ function tooltipDefaults() {
   const legend = document.getElementById('legendExcStatus');
   labels.forEach((l, i) => {
     legend.innerHTML += `<span class="legend-item">
-      <span class="legend-dot" style="background:${colors.border[i]}"></span>${l} <strong style="color:var(--text);margin-left:3px">${data[i]}</strong>
+      <span class="legend-dot" style="background:${colors.border[i]}"></span>${l} <strong style="color:var(--text-primary);margin-left:3px">${data[i]}</strong>
     </span>`;
   });
 })();
@@ -383,7 +382,7 @@ function tooltipDefaults() {
         },
         y: {
           grid: { display: false },
-          ticks: { color: '#353536', font: { size: 11, weight: '500' } },
+          ticks: { color: _root.getPropertyValue('--text-body').trim() || '#353536', font: { size: 11, weight: '500' } },
           border: { display: false },
         }
       },
@@ -398,7 +397,7 @@ function tooltipDefaults() {
   sources.forEach((s, i) => {
     legend.innerHTML += `<span class="legend-item">
       <span class="legend-dot" style="background:${borders[i % borders.length]}"></span>${s}
-      <strong style="color:var(--text);margin-left:3px">${counts[i]}</strong>
+      <strong style="color:var(--text-primary);margin-left:3px">${counts[i]}</strong>
     </span>`;
   });
 })();
@@ -486,7 +485,7 @@ function tooltipDefaults() {
           position: 'top',
           align: 'end',
           labels: {
-            color: '#353536',
+            color: _root.getPropertyValue('--text-body').trim() || '#353536',
             boxWidth: 8,
             boxHeight: 8,
             borderRadius: 2,
@@ -526,11 +525,12 @@ if (!audit.length) {
     <tr>
       <td class="mono text-dim" style="font-size:11px">${formatDateTime(a.timestamp)}</td>
       <td style="font-weight:500">${escapeHtml(a.actor)}</td>
-      <td><code style="font-family:var(--font-mono);font-size:11px;background:var(--surface-2);padding:2px 6px;border-radius:4px;color:var(--text-body)">${escapeHtml(a.action)}</code></td>
+      <td><code style="font-family:var(--font-mono);font-size:11px;background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;color:var(--text-body)">${escapeHtml(a.action)}</code></td>
       <td class="text-dim" style="font-size:12px">${escapeHtml(a.entity_type)}<span style="color:var(--text-faint);margin:0 4px">·</span><span class="mono" style="font-size:11px">${escapeHtml(a.entity_id)}</span></td>
     </tr>
   `).join('');
 }
 </script>
+<script src="js/theme.js"></script>
 </body>
 </html>

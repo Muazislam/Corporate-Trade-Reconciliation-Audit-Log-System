@@ -41,8 +41,12 @@ if ($method === 'POST') {
     $sourceA = trim($input['sourceA'] ?? $input['source_a'] ?? '');
     $sourceB = trim($input['sourceB'] ?? $input['source_b'] ?? '');
 
-    $runRecord = runReconciliation($pdo, $sourceA, $sourceB, 'MANUAL', $user['name']);
-    jsonResponse($runRecord, 201);
+    try {
+        $runRecord = runReconciliation($pdo, $sourceA, $sourceB, 'MANUAL', $user['name']);
+        jsonResponse($runRecord, 201);
+    } catch (InvalidArgumentException $e) {
+        jsonError($e->getMessage(), 400);
+    }
 }
 
 jsonError('Method not allowed', 450);

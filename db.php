@@ -24,7 +24,7 @@ function getDbConnection() {
             http_response_code(500);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['ok' => false, 'error' => 'Database connection failed: ' . $e->getMessage()]);
-            exit;
+            exit(1);
         }
     }
     return $pdo;

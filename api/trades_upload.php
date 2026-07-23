@@ -166,14 +166,19 @@ while (($data = fgetcsv($handle)) !== false) {
     }
     $price = (float)$rawPrice;
 
-    // Date validation
-    $time = strtotime($rawTradeDate);
-    if (!$time) {
+    // Date validation (must be YYYY-MM-DD)
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawTradeDate)) {
         $rejected++;
-        $errors[] = ['row' => $rowNum, 'reason' => "Row {$rowNum}: invalid trade_date '{$rawTradeDate}'"];
+        $errors[] = ['row' => $rowNum, 'reason' => "Row {$rowNum}: trade_date must be YYYY-MM-DD, got '{$rawTradeDate}'"];
         continue;
     }
-    $tradeDate = date('Y-m-d', $time);
+    $parts = explode('-', $rawTradeDate);
+    if (!checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0])) {
+        $rejected++;
+        $errors[] = ['row' => $rowNum, 'reason' => "Row {$rowNum}: invalid calendar date '{$rawTradeDate}'"];
+        continue;
+    }
+    $tradeDate = $rawTradeDate;
 
     // Duplicate check in DB & batch (Requirement 3)
     $dupKey = "{$extId}|{$sourceSystem}";

@@ -55,8 +55,8 @@ if ($runId !== '' && !$exceptionsOnly) {
     unset($e);
 
     // Audit log
-    $details = "Run {$runId} exported as CSV by {$user['name']}";
-    appendAuditLog($pdo, $user['name'], 'REPORT_EXPORTED', 'ReconciliationRun', $runId, "format=CSV; run_id={$runId}");
+    appendAuditLog($pdo, $user['name'], 'REPORT_EXPORTED', 'ReconciliationRun', $runId,
+        "Run {$runId} exported as CSV by {$user['name']}");
 
     // Stream CSV
     $safeId   = preg_replace('/[^a-zA-Z0-9_-]/', '_', $runId);

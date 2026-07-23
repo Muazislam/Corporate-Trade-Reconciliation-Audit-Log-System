@@ -19,10 +19,10 @@ require_once __DIR__ . '/../db.php';
  */
 function runReconciliation($pdo, $sourceA, $sourceB, $triggerType, $actor) {
     if (empty($sourceA) || empty($sourceB)) {
-        jsonError('Both sourceA and sourceB are required.', 400);
+        throw new InvalidArgumentException('Both sourceA and sourceB are required.');
     }
     if ($sourceA === $sourceB) {
-        jsonError('Source A and Source B must be different.', 400);
+        throw new InvalidArgumentException('Source A and Source B must be different.');
     }
 
     $stmtA = $pdo->prepare("SELECT * FROM trades WHERE source_system = ?");
@@ -44,7 +44,7 @@ function runReconciliation($pdo, $sourceA, $sourceB, $triggerType, $actor) {
     $newExceptions = [];
     $matchedCount = 0;
     $runId = 'run_' . bin2hex(random_bytes(4));
-    $nowIso = date('c');
+    $nowIso = date('Y-m-d H:i:s');
 
     foreach ($groupA as $ta) {
         $ta['quantity'] = (int)$ta['quantity'];
@@ -74,7 +74,7 @@ function runReconciliation($pdo, $sourceA, $sourceB, $triggerType, $actor) {
         $tb = $byIdB[$extId];
 
         $qtyMismatch = ($ta['quantity'] !== $tb['quantity']);
-        $priceMismatch = (abs($ta['price'] - $tb['price']) > 0.001);
+        $priceMismatch = (abs($ta['price'] - $tb['price']) > 0.0001);
 
         if ($qtyMismatch) {
             $newExceptions[] = [
@@ -137,7 +137,7 @@ function runReconciliation($pdo, $sourceA, $sourceB, $triggerType, $actor) {
         }
     }
 
-    $totalCompared = count($groupA) + count($groupB);
+    $totalCompared = count($groupA) + count($groupB) - $matchedCount;
     $mismatchedCount = count($newExceptions);
 
     $stmtRun = $pdo->prepare(
