@@ -126,3 +126,8 @@ INSERT INTO `trades` (`id`, `external_trade_id`, `source_system`, `symbol`, `qua
 -- Schema migration: Add trigger_type to reconciliation_runs
 -- ------------------------------------------------------------
 ALTER TABLE reconciliation_runs ADD COLUMN trigger_type ENUM('MANUAL', 'SCHEDULED') NOT NULL DEFAULT 'MANUAL' AFTER mismatched_count;
+
+-- ------------------------------------------------------------
+-- Schema migration: Add notification_sent to reconciliation_runs
+-- ------------------------------------------------------------
+ALTER TABLE reconciliation_runs ADD COLUMN notification_sent TINYINT(1) NOT NULL DEFAULT 0 AFTER trigger_type;

@@ -14,7 +14,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Handle GET: list reconciliation run history
 if ($method === 'GET') {
     $stmt = $pdo->query(
-        "SELECT id, run_date, source_a, source_b, total_compared, matched_count, mismatched_count, trigger_type
+        "SELECT id, run_date, source_a, source_b, total_compared, matched_count, mismatched_count, trigger_type, notification_sent
          FROM reconciliation_runs
          ORDER BY run_date DESC, id DESC"
     );
@@ -25,6 +25,7 @@ if ($method === 'GET') {
         $r['matched_count']    = (int)$r['matched_count'];
         $r['mismatched_count'] = (int)$r['mismatched_count'];
         $r['trigger_type']     = $r['trigger_type'] ?? 'MANUAL';
+        $r['notification_sent'] = (int)($r['notification_sent'] ?? 0);
         // Ensure ISO format for run_date if needed by frontend
         $r['run_date'] = date('c', strtotime($r['run_date']));
     }

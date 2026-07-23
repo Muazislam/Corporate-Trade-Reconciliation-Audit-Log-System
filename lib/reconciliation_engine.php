@@ -171,6 +171,21 @@ function runReconciliation($pdo, $sourceA, $sourceB, $triggerType, $actor) {
         ]);
     }
 
+    // Send email notification if exceptions were raised
+    if ($mismatchedCount > 0) {
+        try {
+            require_once __DIR__ . '/notifier.php';
+            $notified = sendExceptionNotification($pdo, $runId, $sourceA, $sourceB, $newExceptions);
+            if ($notified) {
+                $stmtUpd = $pdo->prepare("UPDATE reconciliation_runs SET notification_sent = 1 WHERE id = ?");
+                $stmtUpd->execute([$runId]);
+            }
+        } catch (\Exception $e) {
+            appendAuditLog($pdo, 'SYSTEM', 'NOTIFICATION_FAILED', 'ReconciliationRun', $runId,
+                "Notifier threw: " . $e->getMessage());
+        }
+    }
+
     $details = "{$sourceA} vs {$sourceB}: {$matchedCount} matched, {$mismatchedCount} exceptions";
     $action = ($triggerType === 'SCHEDULED') ? 'RECONCILIATION_RUN_SCHEDULED' : 'RUN_RECONCILIATION';
     appendAuditLog($pdo, $actor, $action, 'ReconciliationRun', $runId, $details);

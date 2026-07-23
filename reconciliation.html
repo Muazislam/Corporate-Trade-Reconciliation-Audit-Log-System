@@ -92,7 +92,7 @@
       <div class="table-wrap">
         <table>
             <thead>
-            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th><th>Type</th></tr>
+            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th><th>Type</th><th>Notified</th></tr>
           </thead>
           <tbody id="runsBody"></tbody>
         </table>
@@ -123,11 +123,17 @@
     return '<span class="pill pill-pending">Manual</span>';
   }
 
+  function pillForNotification(r) {
+    if (r.mismatched_count === 0) return '<span class="text-faint" style="font-size:11px;">—</span>';
+    if (r.notification_sent) return '<span class="pill pill-matched">Sent</span>';
+    return '<span class="pill pill-pending">Pending</span>';
+  }
+
   function renderRuns() {
     const runs = Store.getRuns();
     const body = document.getElementById('runsBody');
     if (!runs.length) {
-      body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
       return;
     }
     body.innerHTML = runs.map(r => `
@@ -138,6 +144,7 @@
         <td class="num">${r.matched_count}</td>
         <td class="num">${r.mismatched_count}</td>
         <td>${pillForTriggerType(r.trigger_type)}</td>
+        <td>${pillForNotification(r)}</td>
       </tr>
     `).join('');
   }
