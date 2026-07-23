@@ -91,8 +91,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th></tr>
+            <thead>
+            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th><th>Type</th></tr>
           </thead>
           <tbody id="runsBody"></tbody>
         </table>
@@ -118,11 +118,16 @@
 <script>
   initShell('reconciliation');
 
+  function pillForTriggerType(type) {
+    if (type === 'SCHEDULED') return '<span class="pill pill-matched">Scheduled</span>';
+    return '<span class="pill pill-pending">Manual</span>';
+  }
+
   function renderRuns() {
     const runs = Store.getRuns();
     const body = document.getElementById('runsBody');
     if (!runs.length) {
-      body.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
       return;
     }
     body.innerHTML = runs.map(r => `
@@ -132,6 +137,7 @@
         <td class="num">${r.total_compared}</td>
         <td class="num">${r.matched_count}</td>
         <td class="num">${r.mismatched_count}</td>
+        <td>${pillForTriggerType(r.trigger_type)}</td>
       </tr>
     `).join('');
   }

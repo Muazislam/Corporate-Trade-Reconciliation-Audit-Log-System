@@ -121,3 +121,8 @@ INSERT INTO `trades` (`id`, `external_trade_id`, `source_system`, `symbol`, `qua
 ('t_seed_6', 'TRX-1004', 'BrokerA',  'NVDA', 10,  118.30, 'BUY', '2026-07-19', 'PENDING'),
 ('t_seed_7', 'TRX-1005', 'Internal', 'GOOG', 40,  179.60, 'SELL', '2026-07-19', 'PENDING'),
 ('t_seed_8', 'TRX-1005', 'BrokerA',  'GOOG', 45,  179.60, 'SELL', '2026-07-19', 'PENDING');
+
+-- ------------------------------------------------------------
+-- Schema migration: Add trigger_type to reconciliation_runs
+-- ------------------------------------------------------------
+ALTER TABLE reconciliation_runs ADD COLUMN trigger_type ENUM('MANUAL', 'SCHEDULED') NOT NULL DEFAULT 'MANUAL' AFTER mismatched_count;
