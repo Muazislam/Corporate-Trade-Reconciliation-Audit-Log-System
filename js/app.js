@@ -24,7 +24,20 @@ function initShell(activePage) {
     });
   }
 
+  initThemeToggle();
   return session;
+}
+
+/* ---------- Theme toggle ---------- */
+function initThemeToggle() {
+  const toggle = document.getElementById('themeToggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('trc_theme', next);
+  });
 }
 
 const _toasts = [];

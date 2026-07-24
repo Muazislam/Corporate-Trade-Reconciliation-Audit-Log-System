@@ -221,3 +221,114 @@ index.html ──> js/store.js
 ```
 
 All authenticated pages call `initShell(pageName)` on load, which calls `Store.requireAuth()` automatically. Any page can call `Store.getSession()`, `Store.logout()`, etc.
+
+---
+
+## Theming System
+
+**Files:** `css/style.css` (all theme variables & font imports), `js/app.js` (`initThemeToggle`), all 6 HTML files (`<head>` inline script + toggle button), `ARCHITECTURE.md` (this section).
+
+### What it does
+
+Provides a light mode / dark mode toggle that switches every theme-dependent neutral color on the page instantly. The toggle is a pill-shaped switch with a sliding thumb and inline SVG sun/moon icons, located in the sidebar footer (`#themeToggle`). The chosen theme persists in `localStorage` under `trc_theme` and survives page navigation.
+
+### Palette philosophy
+
+Neither theme uses pure black or pure white — dark mode uses a soft charcoal (`#15181D`) rather than `#000000`, and light mode uses a warm linen (`#F6F5F2`) rather than `#FFFFFF`. This reduces perceived glare and eye strain during extended use. The accent color is a desaturated sage teal (`#6FB7A8` dark / `#4F8C7D` light) that provides comfortable contrast without the harshness of a high-saturation primary. A secondary accent (`--accent-secondary`, a muted periwinkle/indigo) is available for charts, data series, and secondary highlights.
+
+### Color system architecture
+
+All theme-dependent colors are CSS custom properties on `:root` (default dark mode), overridden under `[data-theme="light"]`. The **semantic status colors** (`--accent`, `--warn`, `--danger`, `--info` and their `-dim` variants) are *switchable per theme* for their `-dim` backgrounds only — the core hue (`--accent`, `--warn`, etc.) is defined in each theme block because `--accent` also serves as the primary interactive color and must contrast appropriately with both dark and light surfaces. The `-dim` backgrounds are adjusted per theme so pills look harmonious in both modes while retaining their semantic meaning.
+
+**Palette reference:**
+
+| Role | `:root` (dark) | `[data-theme="light"]` |
+|---|---|---|
+| Main bg (`--bg`) | `#15181D` Soft Charcoal | `#F6F5F2` Warm Linen |
+| Card/sidebar bg (`--surface`) | `#1D2127` Slate Panel | `#FFFFFF` Paper White |
+| Elevated surface (`--surface-2`) | `#262B33` Slate Raised | `#EFEDE8` Linen Shade |
+| Secondary surface (`--surface-3`) | `#323841` Graphite Line | `#DEDAD2` Soft Taupe |
+| Border (`--border`) | `#323841` Graphite Line | `#DEDAD2` Soft Taupe |
+| Primary text (`--text`) | `#E4E6EA` Warm Fog | `#2A2D31` Charcoal Ink |
+| Secondary text (`--text-dim`) | `#9BA3AF` Muted Steel | `#5B6067` Graphite |
+| Muted text (`--text-faint`) | `#656E7A` Dim Steel | `#8A8F96` Muted Stone |
+| Interactive accent (`--accent`) | `#6FB7A8` Sage Teal | `#4F8C7D` Forest Teal |
+| Accent dim (pill bg) | `#2A5045` | `#CEE5DF` |
+| Secondary accent (`--accent-secondary`) | `#7C93C7` Dusk Periwinkle | `#5D74A6` Muted Indigo |
+| Warn (core) | `#F0A93A` | `#F0A93A` |
+| Warn dim (pill bg) | `#6B4E1D` | `#F0DDB8` |
+| Danger (core) | `#E5484D` | `#E5484D` |
+| Danger dim (pill bg) | `#5E2224` | `#F5D0D0` |
+| Info (core) | `#5B8DEF` | `#5B8DEF` |
+| Primary btn bg | `--accent` (#6FB7A8) | `--accent` (#4F8C7D) |
+| Primary btn text | `#0F1E1B` | `#1A2E28` |
+| Brand mark gradient | Sage Teal → Dusk Periwinkle | Forest Teal → Muted Indigo |
+
+### Font stack
+
+Three font families are loaded via Google Fonts at the top of `style.css`:
+
+| Font | Weights | Usage |
+|---|---|---|
+| **Inter** | 400, 500, 600, 700 | All body text, labels, buttons, form inputs, and general UI chrome (`--font-ui`) |
+| **Manrope** | 600, 700, 800 | Page titles (`.page-title`), section headings (`.section-title`), the sidebar brand name (`.brand-text strong`), stat-card numbers (`.stat-value`), login title (`.login-title`), modal headings (`h3`). Gives headings a warmer, slightly rounded, human feel (`--font-heading`). |
+| **IBM Plex Mono** | 400, 500, 600 | Tabular/data values — trade IDs, quantities, prices, hashes, timestamps, code-like labels, status pills. Fixed-width alignment is functionally important here (`--font-mono`). Unchanged from the original design. |
+
+### Derived theme-aware variables
+
+- `--btn-primary-bg` / `--btn-primary-color` / `--btn-primary-hover` — used by `.btn-primary`; hover is a slightly darker variant of the theme's accent
+- `--brand-mark-bg` / `--brand-mark-color` — used by `.brand-mark`; gradient uses `--accent` + `--accent-secondary`
+- `--accent-bar` — used by `.nav a.active::before` and `.nav a.active` text color
+- `--modal-backdrop` — semi-transparent overlay (dark in dark mode, lighter in light mode)
+- `--toast-shadow` — deeper shadow in dark mode, subtler in light mode
+- `--row-hover` — subtle highlight on table row hover
+
+### How to add a new themed color
+
+1. Define the dark-mode value in the `:root` block as `--custom-name`.
+2. Add the light-mode override in the `[data-theme="light"]` block.
+3. Reference `var(--custom-name)` in the relevant CSS selector(s).
+4. Never hardcode a theme-dependent hex — always go through a variable so the toggle switches instantly.
+5. For semantic status colors (warn, danger, info), keep the core hue the same in both themes; only the `-dim` background variant should differ per theme for visual harmony.
+
+### Toggle implementation
+
+**`initThemeToggle()`** in `js/app.js`:
+- Called automatically from `initShell()` so all authenticated pages get it.
+- Listens for clicks on `#themeToggle` (a `<button>` in `.sidebar-foot`).
+- On click, reads the current `data-theme` attribute from `<html>`, flips it, saves to `localStorage.setItem('trc_theme', next)`.
+
+**Flash-free initialization** (all 6 HTML files):
+- An inline `<script>` at the end of `<head>` runs synchronously *before* any page content renders.
+- Reads `localStorage.getItem('trc_theme')`; if absent, falls back to `window.matchMedia('(prefers-color-scheme: dark)').matches`.
+- Sets `document.documentElement.setAttribute('data-theme', ...)` immediately — no flash of the wrong theme.
+
+### Toggle switch design
+
+The toggle is a `<button>` with `aria-label="Toggle theme"`. Inside it:
+- `.theme-toggle-track` — 38×20px pill track
+- `.theme-toggle-thumb` — 14×14px circular thumb that slides 18px right in light mode
+- Moon SVG (left) and sun SVG (right); moon is highlighted in dark mode, sun in light mode, via their `color` cascading from the theme variables
+
+At viewport widths ≤ 900px (collapsed sidebar), the track shrinks to 32×18px and the thumb to 12×12px.
+
+### CSS selectors that use theme variables (instead of hardcoded values)
+
+| Selector | What changed |
+|---|---|
+| `.btn-primary` | `background:var(--btn-primary-bg); color:var(--btn-primary-color)` |
+| `.btn-primary:hover` | `background:var(--btn-primary-hover)` |
+| `tbody tr:hover` | `background:var(--row-hover)` |
+| `.modal-backdrop` | `background:var(--modal-backdrop)` |
+| `.toast` | `box-shadow:var(--toast-shadow)` |
+| `.nav a.active` / `::before` | `color` / `background` use `--accent-bar` |
+| `.brand-mark` | `background:var(--brand-mark-bg); color:var(--brand-mark-color)` |
+| `:focus-visible` | `box-shadow: ... var(--accent)` |
+
+### Edge cases
+
+- **Login page (`index.html`):** No sidebar/toggle button, but the flash-free `<head>` script still applies the saved/OS-preferred theme so it's correct when the user lands on the dashboard.
+- **No saved preference:** Falls back to `prefers-color-scheme`; if neither is set, defaults to dark mode.
+- **Collapsed sidebar (≤900px):** The toggle shrinks and remains visible in the sidebar footer column.
+- **Pill contrast:** The status pill colors (`--accent`: Sage Teal / Forest Teal, `--warn`: Amber, `--danger`: Red, `--info`: Blue) maintain ≥4.5:1 contrast against their own `-dim` backgrounds in both themes, because each pill has a self-contained background and foreground — the page surface color never affects pill readability.
+- **Body text contrast:** `--text` on `--bg` in dark mode (#E4E6EA on #15181D) exceeds 12:1; in light mode (#2A2D31 on #F6F5F2) exceeds 9:1 — well above WCAG AA minimums, but not harsh (deliberately avoiding 21:1 ratios that cause eye strain).
