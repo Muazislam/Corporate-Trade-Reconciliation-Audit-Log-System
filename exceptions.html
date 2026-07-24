@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Exceptions · LedgerChain Recon</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -17,22 +16,21 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
-      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
-      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
-      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
-      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
       <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
-      <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
-      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+      <a href="#" id="logoutBtn" class="logout-link">Sign out</a>
     </div>
   </aside>
 
   <main class="main">
-    <div class="page-head fade-up">
+    <div class="page-head">
       <div>
         <p class="page-eyebrow">Review queue</p>
         <h1 class="page-title">Exceptions</h1>
@@ -40,7 +38,7 @@
       </div>
     </div>
 
-    <div class="filter-bar fade-up" style="animation-delay:.05s;">
+    <div class="filter-bar">
       <select id="filterStatus">
         <option value="">All statuses</option>
         <option value="OPEN">Open</option>
@@ -58,7 +56,7 @@
       <span class="text-faint mono" id="excCount" style="font-size:12px;"></span>
     </div>
 
-    <div class="table-wrap fade-up" style="animation-delay:.1s;" id="tableContainer">
+    <div class="table-wrap">
       <table>
         <thead>
           <tr>
@@ -77,7 +75,7 @@
   <div class="modal">
     <h3>Resolve exception</h3>
     <p class="modal-sub" id="resolveSub"></p>
-    <div class="card" style="background:var(--bg-tertiary); padding:12px 14px; margin-bottom:14px;">
+    <div class="card" style="background:var(--surface-2); padding:12px 14px; margin-bottom:14px;">
       <div id="resolveCompare" class="mono" style="font-size:12px; line-height:1.8;"></div>
     </div>
     <div class="form-row">
@@ -102,24 +100,20 @@
   const filterType = document.getElementById('filterType');
   const excBody = document.getElementById('excBody');
   const excCount = document.getElementById('excCount');
-  const containerEl = document.getElementById('tableContainer');
 
-  function getFilteredExceptions() {
+  function render() {
     let list = Store.getExceptions().slice().reverse();
     if (filterStatus.value) list = list.filter(e => e.status === filterStatus.value);
     if (filterType.value) list = list.filter(e => e.exception_type === filterType.value);
 
     excCount.textContent = list.length + ' record(s)';
-    return list;
-  }
 
-  function renderPageRows(rows) {
-    if (!rows.length) {
+    if (!list.length) {
       excBody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">⚠</div><p>No exceptions match these filters.</p></div></td></tr>`;
       return;
     }
 
-    excBody.innerHTML = rows.map(e => `
+    excBody.innerHTML = list.map(e => `
       <tr>
         <td class="mono">${escapeHtml(e.symbol)}</td>
         <td>${pillForExceptionType(e.exception_type)}</td>
@@ -135,14 +129,6 @@
       btn.addEventListener('click', () => openResolve(btn.dataset.open));
     });
   }
-
-  // Setup reusable pagination (Part B.6)
-  const paginator = makePaginated({
-    container: containerEl,
-    getData: getFilteredExceptions,
-    renderRows: renderPageRows,
-    pageSize: 10
-  });
 
   function openResolve(id) {
     const e = Store.getExceptions().find(x => x.id === id);
@@ -169,18 +155,20 @@
       toast('A resolution note is required before closing an exception.', 'error');
       return;
     }
+    // TODO(PHP): replace with fetch('api/exceptions.php?id=' + activeId, { method:'PATCH', body: ... })
     Store.resolveException(activeId, note, status);
     document.getElementById('resolveModal').classList.add('hidden');
-    paginator.refresh();
+    render();
     toast(status === 'RESOLVED' ? 'Exception marked resolved.' : 'Exception ignored.');
   }
 
   document.getElementById('resolveBtn').addEventListener('click', () => submitResolution('RESOLVED'));
   document.getElementById('ignoreBtn').addEventListener('click', () => submitResolution('IGNORED'));
 
-  filterStatus.addEventListener('change', () => paginator.refresh());
-  filterType.addEventListener('change', () => paginator.refresh());
+  filterStatus.addEventListener('change', render);
+  filterType.addEventListener('change', render);
+
+  render();
 </script>
-<script src="js/theme.js"></script>
 </body>
 </html>

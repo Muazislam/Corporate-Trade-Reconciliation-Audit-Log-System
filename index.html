@@ -1,75 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in · LedgerChain Recon</title>
-  <link rel="icon" type="image/svg+xml"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0F1C'/%3E%3Ctext x='16' y='21' fill='%233DD9C0' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in · LedgerChain Recon</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
 
-  <div class="login-shell">
-    <div class="login-card">
-      <div class="login-brand">
-        <div class="brand-mark">LC</div>
-        <div class="brand-text">
-          <strong>LedgerChain Recon</strong>
-          <span>Trade Reconciliation &amp; Audit</span>
-        </div>
-      </div>
-
-      <h1 class="login-title">Sign in</h1>
-      <p class="login-sub">Access is logged. Every session is recorded to the audit trail.</p>
-
-      <form id="loginForm">
-        <div class="form-row">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="admin@corp.test" required autocomplete="username">
-        </div>
-        <div class="form-row">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
-        </div>
-        <div id="loginError" class="error-text hidden"></div>
-        <button type="submit" class="btn btn-primary w-100" style="margin-top:6px;">Sign in</button>
-      </form>
-
-      <div class="login-demo">
-        Demo credentials —<br>
-        Admin: admin@corp.test / admin123<br>
-        Auditor: auditor@corp.test / audit123
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">LC</div>
+      <div class="brand-text">
+        <strong>LedgerChain Recon</strong>
+        <span>Trade Reconciliation &amp; Audit</span>
       </div>
     </div>
+
+    <h1 class="login-title">Sign in</h1>
+    <p class="login-sub">Access is logged. Every session is recorded to the audit trail.</p>
+
+    <form id="loginForm">
+      <div class="form-row">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="admin@corp.test" required autocomplete="username">
+      </div>
+      <div class="form-row">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <div id="loginError" class="error-text hidden"></div>
+      <button type="submit" class="btn btn-primary w-100" style="margin-top:6px;">Sign in</button>
+    </form>
+
+    <div class="login-demo">
+      Demo credentials —<br>
+      Admin: admin@corp.test / admin123<br>
+      Auditor: auditor@corp.test / audit123
+    </div>
   </div>
+</div>
 
-  <script src="js/store.js"></script>
-  <script>
-    // If already signed in, skip straight to dashboard.
-    if (Store.getSession()) window.location.href = 'dashboard.html';
+<script src="js/store.js"></script>
+<script>
+  // If already signed in, skip straight to dashboard.
+  if (Store.getSession()) window.location.href = 'dashboard.html';
 
-    const form = document.getElementById('loginForm');
-    const errorBox = document.getElementById('loginError');
+  const form = document.getElementById('loginForm');
+  const errorBox = document.getElementById('loginError');
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
-      // TODO(PHP): replace with fetch('api/auth.php', { method:'POST', body: ... })
-      const result = Store.login(email, password);
+    // TODO(PHP): replace with fetch('api/auth.php', { method:'POST', body: ... })
+    const result = Store.login(email, password);
 
-      if (!result.ok) {
-        errorBox.textContent = result.error;
-        errorBox.classList.remove('hidden');
-        return;
-      }
-      window.location.href = 'dashboard.html';
-    });
-  </script>
+    if (!result.ok) {
+      errorBox.textContent = result.error;
+      errorBox.classList.remove('hidden');
+      return;
+    }
+    window.location.href = 'dashboard.html';
+  });
+</script>
 </body>
-
 </html>

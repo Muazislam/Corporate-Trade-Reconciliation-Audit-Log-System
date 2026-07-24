@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trades · LedgerChain Recon</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23353536'/%3E%3Ctext x='16' y='21' fill='%230d9488' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -17,34 +16,30 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
-      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
-      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
-      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
-      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
       <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
-      <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
-      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+      <a href="#" id="logoutBtn" class="logout-link">Sign out</a>
     </div>
   </aside>
 
   <main class="main">
-    <div class="page-head fade-up">
+    <div class="page-head">
       <div>
         <p class="page-eyebrow">Ledger</p>
         <h1 class="page-title">Trades</h1>
         <p class="page-sub">Trade records ingested from every connected source system.</p>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn" id="openUploadCsv">Upload CSV</button>
-        <button class="btn btn-primary" id="openAddTrade">+ Add trade</button>
-      </div>
+      <button class="btn btn-primary" id="openAddTrade">+ Add trade</button>
     </div>
 
-    <div class="filter-bar fade-up" style="animation-delay:.05s;">
+    <div class="filter-bar">
       <select id="filterSource">
         <option value="">All sources</option>
         <option value="Internal">Internal</option>
@@ -55,8 +50,8 @@
       <span class="text-faint mono" id="tradeCount" style="font-size:12px;"></span>
     </div>
 
-    <div class="table-wrap fade-up" style="animation-delay:.1s;" id="tableContainer">
-      <table id="tradesTable">
+    <div class="table-wrap">
+      <table>
         <thead>
           <tr>
             <th>Trade ID</th><th>Source</th><th>Symbol</th><th>Side</th>
@@ -73,7 +68,7 @@
 <div class="modal-backdrop hidden" id="addTradeModal">
   <div class="modal">
     <h3>Add trade record</h3>
-    <p class="modal-sub">Manually record a trade from a source system.</p>
+    <p class="modal-sub">Manually record a trade from a source system. In production this would also support CSV upload.</p>
     <form id="addTradeForm">
       <div class="form-grid">
         <div class="form-row">
@@ -119,61 +114,33 @@
   </div>
 </div>
 
-<!-- Upload CSV modal -->
-<div class="modal-backdrop hidden" id="uploadCsvModal">
-  <div class="modal">
-    <h3>Upload trades CSV</h3>
-    <p class="modal-sub">Expected columns: <code>external_trade_id, source_system, symbol, side, quantity, price, trade_date</code></p>
-    <form id="uploadCsvForm">
-      <div class="form-row">
-        <label for="f_csv_file">Select CSV file</label>
-        <input type="file" id="f_csv_file" accept=".csv" required>
-      </div>
-      <div id="uploadSummary" class="hidden" style="margin-top:12px;">
-        <div id="uploadSummaryText" class="mono" style="font-size:12px; margin-bottom:8px; font-weight:600;"></div>
-        <div id="uploadErrorsList" class="mono text-dim" style="font-size:11px; max-height:120px; overflow-y:auto; background:var(--bg-tertiary); padding:8px 10px; border-radius:var(--radius); border:1px solid var(--border);"></div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" id="cancelUploadCsv">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="submitUploadCsv">Upload</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
 <script>
   initShell('trades');
 
   const body = document.getElementById('tradesBody');
-  const tableEl = document.getElementById('tradesTable');
-  const containerEl = document.getElementById('tableContainer');
   const filterSource = document.getElementById('filterSource');
   const filterSymbol = document.getElementById('filterSymbol');
   const countEl = document.getElementById('tradeCount');
 
-  let currentTradesList = [];
-
-  function getFilteredTrades() {
+  function render() {
     let trades = Store.getTrades();
     const src = filterSource.value;
     const sym = filterSymbol.value.trim().toUpperCase();
     if (src) trades = trades.filter(t => t.source_system === src);
     if (sym) trades = trades.filter(t => t.symbol.toUpperCase().includes(sym));
 
-    countEl.textContent = trades.length + ' record(s)';
-    currentTradesList = trades;
-    return currentTradesList;
-  }
+    trades = trades.slice().sort((a,b) => a.external_trade_id.localeCompare(b.external_trade_id));
 
-  function renderRows(rows) {
-    if (!rows.length) {
+    countEl.textContent = trades.length + ' record(s)';
+
+    if (!trades.length) {
       body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">▤</div><p>No trades match these filters.</p></div></td></tr>`;
       return;
     }
 
-    body.innerHTML = rows.map(t => `
+    body.innerHTML = trades.map(t => `
       <tr>
         <td class="mono">${escapeHtml(t.external_trade_id)}</td>
         <td>${escapeHtml(t.source_system)}</td>
@@ -187,34 +154,16 @@
     `).join('');
   }
 
-  // Setup reusable pagination and sortable columns
-  const paginator = makePaginated({
-    container: containerEl,
-    getData: getFilteredTrades,
-    renderRows: renderRows,
-    pageSize: 10
-  });
+  filterSource.addEventListener('change', render);
+  filterSymbol.addEventListener('input', render);
 
-  makeSortable(
-    tableEl,
-    currentTradesList,
-    (sorted) => {
-      currentTradesList = sorted;
-      paginator.refresh();
-    },
-    ['external_trade_id', 'source_system', 'symbol', 'side', 'quantity', 'price', 'trade_date', 'status']
-  );
-
-  filterSource.addEventListener('change', () => paginator.refresh());
-  filterSymbol.addEventListener('input', () => paginator.refresh());
-
-  // Add trade modal
-  const addModal = document.getElementById('addTradeModal');
-  document.getElementById('openAddTrade').addEventListener('click', () => addModal.classList.remove('hidden'));
-  document.getElementById('cancelAddTrade').addEventListener('click', () => addModal.classList.add('hidden'));
+  const modal = document.getElementById('addTradeModal');
+  document.getElementById('openAddTrade').addEventListener('click', () => modal.classList.remove('hidden'));
+  document.getElementById('cancelAddTrade').addEventListener('click', () => modal.classList.add('hidden'));
 
   document.getElementById('addTradeForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    // TODO(PHP): replace with fetch('api/trades.php', { method:'POST', body: JSON.stringify(payload) })
     Store.addTrade({
       external_trade_id: document.getElementById('f_external_id').value.trim(),
       source_system: document.getElementById('f_source').value,
@@ -224,64 +173,13 @@
       price: Number(document.getElementById('f_price').value),
       trade_date: document.getElementById('f_date').value
     });
-    addModal.classList.add('hidden');
+    modal.classList.add('hidden');
     e.target.reset();
-    paginator.refresh();
+    render();
     toast('Trade added.');
   });
 
-  // CSV Upload modal logic
-  const csvModal = document.getElementById('uploadCsvModal');
-  const csvForm = document.getElementById('uploadCsvForm');
-  const csvFileInput = document.getElementById('f_csv_file');
-  const summaryBox = document.getElementById('uploadSummary');
-  const summaryText = document.getElementById('uploadSummaryText');
-  const errorsList = document.getElementById('uploadErrorsList');
-
-  function resetCsvModal() {
-    csvForm.reset();
-    summaryBox.classList.add('hidden');
-    summaryText.textContent = '';
-    errorsList.innerHTML = '';
-  }
-
-  document.getElementById('openUploadCsv').addEventListener('click', () => {
-    resetCsvModal();
-    csvModal.classList.remove('hidden');
-  });
-
-  document.getElementById('cancelUploadCsv').addEventListener('click', () => {
-    csvModal.classList.add('hidden');
-    resetCsvModal();
-  });
-
-  csvForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const file = csvFileInput.files[0];
-    if (!file) {
-      toast('Please select a CSV file to upload.', 'error');
-      return;
-    }
-
-    const res = Store.uploadTradesCsv(file);
-    if (!res || res.error) {
-      toast((res && res.error) ? res.error : 'CSV upload failed.', 'error');
-      return;
-    }
-
-    summaryBox.classList.remove('hidden');
-    summaryText.innerHTML = `<span class="accent-text">${res.imported} imported</span>, <span style="color:${res.rejected > 0 ? 'var(--danger)' : 'var(--text-dim)'}">${res.rejected} rejected</span>`;
-
-    if (res.errors && res.errors.length) {
-      errorsList.innerHTML = res.errors.map(err => `<div>• ${escapeHtml(err.reason)}</div>`).join('');
-    } else {
-      errorsList.innerHTML = `<div class="accent-text">• All rows imported successfully!</div>`;
-    }
-
-    paginator.refresh();
-    toast(`CSV uploaded: ${res.imported} imported, ${res.rejected} rejected.`);
-  });
+  render();
 </script>
-<script src="js/theme.js"></script>
 </body>
 </html>

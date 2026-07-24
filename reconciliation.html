@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reconciliation · LedgerChain Recon</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230A0F1C'/%3E%3Ctext x='16' y='21' fill='%233DD9C0' font-family='monospace' font-weight='bold' font-size='14' text-anchor='middle'%3ELC%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -17,17 +16,16 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html"     data-page="dashboard"    data-label="Dashboard"><span class="nav-ico">◉</span> <span>Dashboard</span></a>
-      <a href="trades.html"        data-page="trades"       data-label="Trades"><span class="nav-ico">▤</span> <span>Trades</span></a>
-      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> <span>Reconciliation</span></a>
-      <a href="exceptions.html"   data-page="exceptions"   data-label="Exceptions"><span class="nav-ico">⚠</span> <span>Exceptions</span></a>
-      <a href="audit-log.html"    data-page="audit"        data-label="Audit Log"><span class="nav-ico">≡</span> <span>Audit Log</span></a>
+      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
       <div class="who"><strong id="sessionName">—</strong><span id="sessionRole">—</span></div>
-      <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">🌙</button>
-      <a href="#" id="logoutBtn" class="logout-link" title="Sign out">↪</a>
+      <a href="#" id="logoutBtn" class="logout-link">Sign out</a>
     </div>
   </aside>
 
@@ -92,8 +90,8 @@
       </div>
       <div class="table-wrap">
         <table>
-            <thead>
-            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th><th>Type</th><th>Notified</th></tr>
+          <thead>
+            <tr><th>Run date</th><th>Sources</th><th>Compared</th><th>Matched</th><th>Exceptions</th></tr>
           </thead>
           <tbody id="runsBody"></tbody>
         </table>
@@ -102,39 +100,16 @@
   </main>
 </div>
 
-<!-- Confirm exceptions modal -->
-<div class="modal-backdrop hidden" id="confirmExceptionsModal">
-  <div class="modal">
-    <h3>Exceptions raised</h3>
-    <p class="modal-sub" id="confirmExceptionsText"></p>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" id="cancelExceptionsBtn">Cancel</button>
-      <button type="button" class="btn btn-primary" id="viewExceptionsBtn">View exceptions</button>
-    </div>
-  </div>
-</div>
-
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
 <script>
   initShell('reconciliation');
 
-  function pillForTriggerType(type) {
-    if (type === 'SCHEDULED') return '<span class="pill pill-matched">Scheduled</span>';
-    return '<span class="pill pill-pending">Manual</span>';
-  }
-
-  function pillForNotification(r) {
-    if (r.mismatched_count === 0) return '<span class="text-faint" style="font-size:11px;">—</span>';
-    if (r.notification_sent) return '<span class="pill pill-matched">Sent</span>';
-    return '<span class="pill pill-pending">Pending</span>';
-  }
-
   function renderRuns() {
     const runs = Store.getRuns();
     const body = document.getElementById('runsBody');
     if (!runs.length) {
-      body.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
+      body.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="glyph">⇄</div><p>No reconciliation runs yet. Run one above.</p></div></td></tr>`;
       return;
     }
     body.innerHTML = runs.map(r => `
@@ -144,8 +119,6 @@
         <td class="num">${r.total_compared}</td>
         <td class="num">${r.matched_count}</td>
         <td class="num">${r.mismatched_count}</td>
-        <td>${pillForTriggerType(r.trigger_type)}</td>
-        <td>${pillForNotification(r)}</td>
       </tr>
     `).join('');
   }
@@ -174,23 +147,14 @@
 
     if (run.mismatched_count > 0) {
       setTimeout(() => {
-        const modal = document.getElementById('confirmExceptionsModal');
-        const text = document.getElementById('confirmExceptionsText');
-        text.textContent = `${run.mismatched_count} exception(s) were raised. View them now?`;
-        modal.classList.remove('hidden');
+        if (confirm(`${run.mismatched_count} exception(s) were raised. View them now?`)) {
+          window.location.href = 'exceptions.html';
+        }
       }, 300);
     }
   });
 
-  document.getElementById('cancelExceptionsBtn').addEventListener('click', () => {
-    document.getElementById('confirmExceptionsModal').classList.add('hidden');
-  });
-  document.getElementById('viewExceptionsBtn').addEventListener('click', () => {
-    window.location.href = 'exceptions.html';
-  });
-
   renderRuns();
 </script>
-<script src="js/theme.js"></script>
 </body>
 </html>
