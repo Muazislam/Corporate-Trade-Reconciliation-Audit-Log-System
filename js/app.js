@@ -27,6 +27,7 @@ function initShell(activePage) {
   initThemeToggle();
   initResponsiveTables();
   initMobileSidebar();
+  initSidebarCollapse();
   return session;
 }
 
@@ -85,6 +86,25 @@ function initMobileSidebar() {
       // Only close on narrow screens where drawer is active
       if (window.innerWidth < 768) closeSidebar();
     });
+  });
+}
+
+/* ---------- Manual sidebar collapse via logo click ---------- */
+function initSidebarCollapse() {
+  const brand = document.querySelector('.brand');
+  const shell = document.querySelector('.app-shell');
+  if (!brand || !shell) return;
+
+  // Restore persisted state
+  const saved = localStorage.getItem('trc_sidebar_collapsed');
+  if (saved === 'true') shell.classList.add('sidebar-collapsed');
+
+  brand.addEventListener('click', () => {
+    // Do not toggle collapse on mobile drawer (<768px)
+    if (window.innerWidth < 768) return;
+    shell.classList.toggle('sidebar-collapsed');
+    const collapsed = shell.classList.contains('sidebar-collapsed');
+    localStorage.setItem('trc_sidebar_collapsed', collapsed ? 'true' : 'false');
   });
 }
 

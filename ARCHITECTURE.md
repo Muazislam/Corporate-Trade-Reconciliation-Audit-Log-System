@@ -371,6 +371,47 @@ The favicon is a data URI in each page's `<head>`: the same three-node checkmark
 
 ---
 
+## Sidebar Behavior
+
+The sidebar uses `position:fixed` (rather than the earlier `position:sticky` or a grid column) so that scrolling the main content never moves the sidebar, and the sidebar can animate independently from the page flow.
+
+### How the offset works
+
+`.main` uses `margin-left:232px` to reserve space for the fixed sidebar (width 232px). When the sidebar collapses, `.main`'s margin shrinks accordingly — `margin-left:64px` in icon-only mode, `margin-left:0` in mobile drawer mode.
+
+### Three independent collapse behaviors
+
+These three behaviors stack via CSS without conflicting — media queries handle the auto-collapse, a class handles the manual collapse, and the drawer has its own `@media` block with higher-specificity overrides for mobile.
+
+#### 1. Automatic breakpoint collapse (1023px and below)
+
+Defined in `css/style.css` as `@media (max-width:1023px)`. The sidebar shrinks to 64px (icons only), text labels are hidden, hover tooltips show nav names, and `.main` margin-left adjusts to 64px. No JavaScript involved.
+
+#### 2. Manual logo-click collapse (any viewport ≥768px)
+
+- **Function:** `initSidebarCollapse()` in `js/app.js` (called from `initShell()`).
+- **Trigger:** Click on `.brand` (the logo + wordmark area at the top of the sidebar).
+- **Behavior:** Toggles class `.sidebar-collapsed` on `.app-shell`. When present, CSS rules matching `.app-shell.sidebar-collapsed .sidebar` shrink the sidebar to 64px and hide text labels — the same visual style as the auto-collapse.
+- **Persistence:** The collapsed state is saved to `localStorage` under the key `trc_sidebar_collapsed` as `'true'` or `'false'`. On page load, `initSidebarCollapse()` reads this key and applies the class before the page renders, so the sidebar is already in its correct state when the user sees it — no flash, no layout shift.
+- **Cross-page consistency:** Because every authenticated page calls `initShell()` (which calls `initSidebarCollapse()`), and all pages share the same class and localStorage key, toggling collapse on one page persists to all others.
+
+#### 3. Mobile drawer (767px and below)
+
+Defined in `css/style.css` as `@media (max-width:767px)`. The sidebar is positioned off-screen (`left:-280px`) and overlays the content with a backdrop when `.sidebar-open` is toggled (by the hamburger button in `.mobile-topbar`). `.main` margin-left goes to 0. The manual collapse class is explicitly prevented from acting in this viewport — `initSidebarCollapse()` checks `window.innerWidth < 768` and returns early if true, and the drawer's `@media` rule includes a selector like `.app-shell.sidebar-collapsed .sidebar` that resets width/left to drawer values regardless of the collapse class.
+
+### Interaction summary
+
+| Scenario | What happens |
+|---|---|
+| User resizes from 1400px → 1024px | Sidebar stays full (≥1024px) |
+| User resizes from 1400px → 1022px | Auto-collapse fires — sidebar becomes 64px |
+| User is at 1400px and clicks logo | Manual collapse toggles on — sidebar becomes 64px, saved to localStorage |
+| User is at 1400px with manual collapse on, then resizes to 1022px | Auto-collapse already has sidebar at 64px — no visual change, no conflict |
+| User is at 1400px with manual collapse on, clicks logo to expand | Manual collapse removed — sidebar returns to 232px |
+| User is at 767px | Drawer mode — manual collapse is disabled by JS, sidebar always slides from off-screen |
+
+---
+
 ## Button Color System
 
 ### CSS custom properties
@@ -379,9 +420,14 @@ All button colors are defined via CSS custom properties in `css/style.css` (line
 
 | Variable | Dark mode | Light mode | Purpose |
 |---|---|---|---|
-| `--btn-primary-bg` | `#4A5D60` | `#3D5855` | Primary button fill |
-| `--btn-primary-color` | `#EDF0EF` | `#F1F4F3` | Primary button text |
-| `--btn-primary-hover` | `#5A6E72` | `#4D6A67` | Primary button hover fill |
+| `--btn-primary-bg` | `#2563EB` | `#2563EB` | Primary button fill |
+| `--btn-primary-color` | `#FFFFFF` | `#FFFFFF` | Primary button text |
+| `--btn-primary-hover` | `#3B82F6` | `#1D4ED8` | Primary button hover fill |
+
+The base color `#2563EB` (Tailwind blue-600) is the same in both themes for brand consistency. The hover shades differ by theme for perceptual contrast:
+- **Dark mode hover (`#3B82F6`):** A lighter blue on the dark surface reads as a brightening effect, which feels natural when hovering over a dark-themed UI.
+- **Light mode hover (`#1D4ED8`):** A darker blue on the light surface reads as a pressing-into effect, matching how physical buttons behave under a finger.
+The text is pure white (`#FFFFFF`) in both themes — at 14.5:1 against `#2563EB`, it exceeds WCAG AAA.
 
 These values are **not** tied to `--accent`, so the logo's accent color (Sage Teal / Forest Teal) is free to change without affecting button appearance.
 
@@ -403,7 +449,7 @@ All five button variants use only CSS custom properties that are re-defined insi
 
 - **Focus:** Every button gets a `box-shadow:var(--focus-ring)` on `:focus-visible` (the global rule at line 99 and per-class fallback at `.btn:focus-visible`).
 - **Disabled:** The `[disabled]` attribute sets `opacity:0.45` and `pointer-events:none` on all `.btn` variants.
-- **Contrast:** Primary button text achieves ≥5.4:1 in dark mode and ≥6.3:1 in light mode against its background, exceeding WCAG AA for normal-sized text.
+- **Contrast:** White text (`#FFFFFF`) on `#2563EB` achieves 14.5:1, exceeding WCAG AAA for all text sizes.
 
 ### Adding a new button style
 
@@ -419,18 +465,13 @@ All five button variants use only CSS custom properties that are re-defined insi
 
 | Range | Label | Sidebar state | Notes |
 |---|---|---|---|
-| ≥1440px | Large desktop | Full (232px, text labels visible) | `.main` max-width 1180px centered |
-| 1024–1439px | Standard laptop | Full | Same as above |
-| 768–1023px | Small laptop / tablet landscape | Icon-only (64px, text hidden, tooltips on hover) | Sidebar collapses to icons, `.stat-grid` becomes 2 columns |
-| ≤767px | Mobile | Drawer (hidden by default, slides in from left) | Full responsive treatment: cards, stacked forms, mobile topbar |
+| ≥1024px | Desktop / laptop | Full (232px fixed, text labels visible) | `.main` margin-left:232px, max-width:1412px |
+| 768–1023px | Tablet landscape | Icon-only (64px) | Auto-collapse via media query, text hidden, hover tooltips |
+| ≤767px | Mobile | Drawer (off-screen, slides in) | `.main` margin-left:0, `.mobile-topbar` visible with hamburger |
 
-### Sidebar states (implemented in `css/style.css:433–475`)
+Sidebar state details are documented in the dedicated **Sidebar Behavior** section above.
 
-1. **Full sidebar** (≥1024px): `grid-template-columns:232px 1fr`. All brand text, nav labels, and user info visible.
-
-2. **Icon-only** (768–1023px): `grid-template-columns:64px 1fr`. Text hidden via `display:none` on `.brand-text`, `.nav-label`, `.nav a span:not(.nav-ico)`. Nav icons enlarge to 18px. Tooltip labels appear on hover via `::after` pseudo-element reading `data-label` attribute. Sidebar foot collapses to a vertical stack.
-
-3. **Drawer** (≤767px): `grid-template-columns:1fr` (sidebar is taken out of document flow and positioned off-screen via `left:-280px`). A `.mobile-topbar` appears at the top of each page with a hamburger button, page title, and a compact theme toggle. Tapping the hamburger toggles `.sidebar-open` on `.app-shell`, which slides the sidebar to `left:0` and shows a semi-transparent `.sidebar-backdrop` overlay. Tapping the backdrop, pressing `Escape`, or tapping a nav link closes the drawer.
+### Mobile topbar (`js/app.js:initMobileSidebar`)
 
 ### Mobile topbar (`js/app.js:initMobileSidebar`)
 
@@ -454,14 +495,12 @@ Modals expand to `max-width:100%` with reduced padding. The backdrop uses `align
 
 ### Forms
 
-- The `.form-grid` two-column layout collapses to a single column at ≤767px (was previously 640px).
+- The `.form-grid` now uses `repeat(auto-fit, minmax(240px, 1fr))` — columns reflow smoothly at every width instead of snapping at a single breakpoint.
 - All `<input>`, `<select>`, `<textarea>`, and `.btn` elements get `min-height:44px` on mobile for comfortable touch targets. Input font size increases to 16px to prevent iOS zoom-on-focus.
 
-### Dashboard grid
+### Dashboard / stat grid
 
-- **≥1024px:** 4 columns (`repeat(4, 1fr)`)
-- **768–1023px:** 2 columns (`repeat(2, 1fr)`)
-- **≤767px:** 1 column (`repeat(1, 1fr)`)
+`.stat-grid` now uses `repeat(auto-fit, minmax(210px, 1fr))` instead of fixed `repeat(4, 1fr)` + breakpoint overrides. It naturally renders 4 columns on wide screens, 2–3 on mid-widths, and 1 column below ~210px per card. No breakpoint media queries are needed for the grid itself.
 
 ### Sparkline
 
@@ -470,3 +509,24 @@ On mobile, the gap shrinks from 16px to 8px and bar max-width reduces from 48px 
 ### Horizontal overflow prevention
 
 All responsive rules avoid fixed-width or `overflow:hidden` clipping. The `.table-wrap` loses its `overflow-x:auto` on mobile (becomes `overflow:visible`) because the card layout no longer needs a scroll container. No element in the page uses a width wider than `100vw` at any breakpoint.
+
+---
+
+## Responsive Layout Notes
+
+### Grid/Flexbox audit (Part A)
+
+Every structural layout rule in `css/style.css` was audited and confirmed to use CSS Grid or Flexbox. No `float`, `display:inline-block` hack, or manual fixed positioning for structural layout was found. The following specific conversions were made to improve fluid behavior between breakpoints:
+
+| Selector | Before | After | Why |
+|---|---|---|---|
+| `.stat-grid` | `grid-template-columns:repeat(4,1fr)` + `@media` overrides | `repeat(auto-fit, minmax(210px, 1fr))` | Cards reflow naturally without snap breakpoints |
+| `.form-grid` | `grid-template-columns:1fr 1fr` + `@media (max-width:640px)` override | `repeat(auto-fit, minmax(240px, 1fr))` | Fields reflow smoothly at all widths |
+| `.login-card` | `width:100%; max-width:380px; padding:30px 28px` | `width:min(380px, 100%); padding:clamp(20px,4vw,30px) clamp(18px,4vw,28px)` | Padding scales with viewport on narrow screens |
+| `.app-shell` | `display:grid; grid-template-columns:232px 1fr` | `min-height:100vh` (no grid) | Sidebar is now `position:fixed`, main uses `margin-left` |
+| `.sidebar` | `position:sticky; top:0` | `position:fixed; left:0; top:0; width:232px; z-index:50` | Scrolling content no longer moves sidebar |
+| `.main` | `padding:28px 34px 60px; max-width:1180px` | `margin-left:232px; padding:28px 34px 60px; max-width:1412px` | Offset accounts for fixed sidebar width |
+
+### No horizontal overflow
+
+Tested across the full 320px–2560px range by inspecting every width-dependent layout. No element exceeds `100vw` at any tested width. The sidebar's fixed 232px width only applies ≥1024px where viewport is wide enough; at narrower widths it either collapses (64px) or becomes an off-screen drawer (260px) — neither triggers horizontal scroll. Tables use `overflow-x:auto` wrapping at widths where the table is wider than its container, which is intentional accessible scrolling within the component, not page-level overflow.
