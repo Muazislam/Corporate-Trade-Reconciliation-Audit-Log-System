@@ -322,7 +322,7 @@ At viewport widths ≤ 900px (collapsed sidebar), the track shrinks to 32×18px 
 | `.modal-backdrop` | `background:var(--modal-backdrop)` |
 | `.toast` | `box-shadow:var(--toast-shadow)` |
 | `.nav a.active` / `::before` | `color` / `background` use `--accent-bar` |
-| `.brand-mark` | `background:var(--brand-mark-bg); color:var(--brand-mark-color)` |
+| `.brand-mark` | now contains inline SVG icon with `color:var(--accent)` (removed gradient bg and hardcoded text color) |
 | `:focus-visible` | `box-shadow: ... var(--accent)` |
 
 ### Edge cases
@@ -332,3 +332,141 @@ At viewport widths ≤ 900px (collapsed sidebar), the track shrinks to 32×18px 
 - **Collapsed sidebar (≤900px):** The toggle shrinks and remains visible in the sidebar footer column.
 - **Pill contrast:** The status pill colors (`--accent`: Sage Teal / Forest Teal, `--warn`: Amber, `--danger`: Red, `--info`: Blue) maintain ≥4.5:1 contrast against their own `-dim` backgrounds in both themes, because each pill has a self-contained background and foreground — the page surface color never affects pill readability.
 - **Body text contrast:** `--text` on `--bg` in dark mode (#E4E6EA on #15181D) exceeds 12:1; in light mode (#2A2D31 on #F6F5F2) exceeds 9:1 — well above WCAG AA minimums, but not harsh (deliberately avoiding 21:1 ratios that cause eye strain).
+
+---
+
+## Branding
+
+**Files:** `assets/logo-mark.svg`, `assets/logo-full.svg`, all 6 HTML files (`<head>` favicon + sidebar `.brand-mark`), `css/style.css` (`.brand-mark` layout rule)
+
+### Logo concept: "The Linked Verify"
+
+The logo is a minimal geometric icon — three filled circles connected by two strokes, arranged as a checkmark shape (✓). It visually references the product's core feature: a hash-chained audit log where every record is cryptographically linked to the one before it. The three nodes represent Source A, Source B, and their reconciled/verified result; the connecting strokes represent the tamper-evident chain. The overall silhouette reads as a checkmark, the universal symbol for "verified" or "reconciled."
+
+**Design principles (per the product brief):**
+- Minimal, geometric, single accent color — no gradients, no shadows, no 3D
+- Works at favicon size (16×16) and as a full sidebar mark (28×28)
+- Avoids literal chain-link clipart, crypto clichés, ledger/book icons, and dollar signs
+
+### Theme-aware coloring
+
+The icon SVG uses `currentColor` for all fills and strokes. In the sidebar, it's inside `.brand-mark` which sets `color:var(--accent)` — so it automatically renders as Sage Teal (#6FB7A8) in dark mode and Forest Teal (#4F8C7D) in light mode, switching with the existing `data-theme` toggle. No separate theme logic needed.
+
+### File inventory
+
+| File | Content | Usage |
+|---|---|---|
+| `assets/logo-mark.svg` | Icon-only SVG (32×32 viewBox, `currentColor`) | Drop-in standalone icon for docs, readmes, or external use |
+| `assets/logo-full.svg` | Icon + "LedgerChain" wordmark in Manrope + "RECON SYSTEM" subtitle in Inter (160×40 viewBox, `currentColor`) | Combined lockup for marketing, presentations, or external branding |
+| Inline in `.brand-mark` | Same icon SVG inlined directly in the HTML | Sidebar brand mark on all 5 authenticated pages and the login page |
+| Inline data URI in `<head>` | Same icon SVG with hardcoded `#6FB7A8` (Sage Teal) | Favicon — uses a fixed color since data URIs cannot use `currentColor`; Sage Teal reads clearly on both light and dark browser tab bars |
+
+### How the sidebar uses it
+
+The `.brand-mark` element (28×28px flexible container in the sidebar) previously held the placeholder text "LC". It now contains the inline SVG icon. The CSS no longer applies a gradient background, font styling, or text color — it just centers the SVG, and the SVG inherits `--accent` via `color:var(--accent)` on `.brand-mark svg`. The adjacent `.brand-text` (containing "LedgerChain" / "Recon System") continues to use Manrope and Inter as before, unchanged.
+
+### Favicon
+
+The favicon is a data URI in each page's `<head>`: the same three-node checkmark SVG, using `#6FB7A8` (the dark-mode Sage Teal) for all fills and strokes. This single color was chosen because it sits at a mid-lightness value that remains visible against both light browser tab bars (Chrome, Firefox default) and dark tab bars (Safari dark mode, Firefox dark theme). The favicon has no background rectangle to avoid a clunky "sticker" look.
+
+---
+
+## Button Color System
+
+### CSS custom properties
+
+All button colors are defined via CSS custom properties in `css/style.css` (lines 31–33 dark, lines 70–72 light):
+
+| Variable | Dark mode | Light mode | Purpose |
+|---|---|---|---|
+| `--btn-primary-bg` | `#4A5D60` | `#3D5855` | Primary button fill |
+| `--btn-primary-color` | `#EDF0EF` | `#F1F4F3` | Primary button text |
+| `--btn-primary-hover` | `#5A6E72` | `#4D6A67` | Primary button hover fill |
+
+These values are **not** tied to `--accent`, so the logo's accent color (Sage Teal / Forest Teal) is free to change without affecting button appearance.
+
+### Button variants (defined in `style.css` lines 252–277)
+
+| Class | Default appearance | Hover | Active | When to use |
+|---|---|---|---|---|
+| `.btn` | `--surface-2` bg, `--border` outline | Lighter border | `brightness(0.88)` | Neutral secondary action |
+| `.btn-primary` | `--btn-primary-bg` fill | `--btn-primary-hover` | `brightness(0.92)` | Primary / call-to-action |
+| `.btn-danger` | Transparent bg, `--danger` text + `--danger-dim` border | `--danger-dim` fill | `brightness(0.88)` | Destructive action (e.g. ignoring an exception) |
+| `.btn-ghost` | Transparent bg + border | `--surface-2` fill | Inherits generic | Low-emphasis / Cancel |
+| `.btn-sm` | Same as parent class but smaller padding/font | same | same | Compact context (e.g. inside table rows) |
+
+### Theme switching
+
+All five button variants use only CSS custom properties that are re-defined inside `[data-theme="light"]` — there are no hardcoded hex values in any button rule. Switching themes via the toggle or `localStorage` instantly updates every button on the page without a page reload.
+
+### Accessibility
+
+- **Focus:** Every button gets a `box-shadow:var(--focus-ring)` on `:focus-visible` (the global rule at line 99 and per-class fallback at `.btn:focus-visible`).
+- **Disabled:** The `[disabled]` attribute sets `opacity:0.45` and `pointer-events:none` on all `.btn` variants.
+- **Contrast:** Primary button text achieves ≥5.4:1 in dark mode and ≥6.3:1 in light mode against its background, exceeding WCAG AA for normal-sized text.
+
+### Adding a new button style
+
+1. Add new CSS custom properties in the `:root` and `[data-theme="light"]` blocks in `style.css` (e.g. `--btn-warn-bg`).
+2. Write a new class selector (e.g. `.btn-warn`) that references those properties.
+3. Follow the existing convention for `:hover`, `:active`, and `:focus-visible` states.
+
+---
+
+## Responsive Design
+
+### Breakpoint strategy
+
+| Range | Label | Sidebar state | Notes |
+|---|---|---|---|
+| ≥1440px | Large desktop | Full (232px, text labels visible) | `.main` max-width 1180px centered |
+| 1024–1439px | Standard laptop | Full | Same as above |
+| 768–1023px | Small laptop / tablet landscape | Icon-only (64px, text hidden, tooltips on hover) | Sidebar collapses to icons, `.stat-grid` becomes 2 columns |
+| ≤767px | Mobile | Drawer (hidden by default, slides in from left) | Full responsive treatment: cards, stacked forms, mobile topbar |
+
+### Sidebar states (implemented in `css/style.css:433–475`)
+
+1. **Full sidebar** (≥1024px): `grid-template-columns:232px 1fr`. All brand text, nav labels, and user info visible.
+
+2. **Icon-only** (768–1023px): `grid-template-columns:64px 1fr`. Text hidden via `display:none` on `.brand-text`, `.nav-label`, `.nav a span:not(.nav-ico)`. Nav icons enlarge to 18px. Tooltip labels appear on hover via `::after` pseudo-element reading `data-label` attribute. Sidebar foot collapses to a vertical stack.
+
+3. **Drawer** (≤767px): `grid-template-columns:1fr` (sidebar is taken out of document flow and positioned off-screen via `left:-280px`). A `.mobile-topbar` appears at the top of each page with a hamburger button, page title, and a compact theme toggle. Tapping the hamburger toggles `.sidebar-open` on `.app-shell`, which slides the sidebar to `left:0` and shows a semi-transparent `.sidebar-backdrop` overlay. Tapping the backdrop, pressing `Escape`, or tapping a nav link closes the drawer.
+
+### Mobile topbar (`js/app.js:initMobileSidebar`)
+
+Added as the first child of `.app-shell` on all 5 authenticated pages. Contains:
+- Hamburger button (`#hamburgerBtn`) with an SVG three-line icon
+- Page title (`.mobile-title`) — set per-page in HTML
+- Theme toggle (`#themeToggleMobile`) — wired to the same `initThemeToggle()` handler as the sidebar toggle via `document.querySelectorAll('.theme-toggle')`
+
+### Table → card conversion (implemented in `css/style.css:481–516`, `js/app.js:initResponsiveTables`)
+
+On screens ≤767px:
+- `<thead>` is hidden
+- Each `<tr>` becomes a block-level card with `border-radius`, padding, and margin
+- Each `<td>` becomes a flex row with `justify-content:space-between` — the column label is shown on the left via `::before` pseudo-element reading a `data-label` attribute, and the cell value is shown on the right
+- The `data-label` attributes are populated automatically by `initResponsiveTables()` in `app.js`, which runs on every page (called from `initShell()`). It reads each `<th>` text and copies it to the corresponding `<td>` in each row.
+- Sorting and pagination logic (from `makeSortable` / `makePaginated` in `app.js`) continues to work because the `<tbody>` rows are still valid `<tr>` elements — only the visual presentation changes.
+
+### Modal responsive (≤767px)
+
+Modals expand to `max-width:100%` with reduced padding. The backdrop uses `align-items:flex-end` so the modal sits at the bottom of the viewport (more natural for one-handed tapping on phones).
+
+### Forms
+
+- The `.form-grid` two-column layout collapses to a single column at ≤767px (was previously 640px).
+- All `<input>`, `<select>`, `<textarea>`, and `.btn` elements get `min-height:44px` on mobile for comfortable touch targets. Input font size increases to 16px to prevent iOS zoom-on-focus.
+
+### Dashboard grid
+
+- **≥1024px:** 4 columns (`repeat(4, 1fr)`)
+- **768–1023px:** 2 columns (`repeat(2, 1fr)`)
+- **≤767px:** 1 column (`repeat(1, 1fr)`)
+
+### Sparkline
+
+On mobile, the gap shrinks from 16px to 8px and bar max-width reduces from 48px to 32px so the chart stays legible without horizontal scroll.
+
+### Horizontal overflow prevention
+
+All responsive rules avoid fixed-width or `overflow:hidden` clipping. The `.table-wrap` loses its `overflow-x:auto` on mobile (becomes `overflow:visible`) because the card layout no longer needs a scroll container. No element in the page uses a width wider than `100vw` at any breakpoint.

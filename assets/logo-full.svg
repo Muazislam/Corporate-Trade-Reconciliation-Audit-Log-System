@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" fill="none">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500&family=Manrope:wght@700&display=swap');
+      .lc-icon { color: inherit; }
+      .lc-title { font-family: 'Manrope', system-ui, sans-serif; font-size: 18px; font-weight: 700; fill: currentColor; letter-spacing: -0.3px; }
+      .lc-sub { font-family: 'Inter', system-ui, sans-serif; font-size: 9px; font-weight: 500; fill: currentColor; letter-spacing: 0.5px; opacity: 0.6; }
+    </style>
+  </defs>
+  <!-- Icon mark -->
+  <g class="lc-icon">
+    <circle cx="7" cy="8" r="3.5" fill="currentColor"/>
+    <line x1="10" y1="11" x2="11" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="14" cy="23" r="3.5" fill="currentColor"/>
+    <line x1="17" y1="21" x2="23" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="26" cy="13" r="3.5" fill="currentColor"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="40" y="22" class="lc-title">LedgerChain</text>
+  <text x="40" y="34" class="lc-sub">RECON SYSTEM</text>
+</svg>

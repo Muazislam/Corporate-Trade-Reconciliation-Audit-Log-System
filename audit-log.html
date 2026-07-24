@@ -4,16 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit Log · LedgerChain Recon</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0F1C'/><text x='16' y='22' font-family='IBM Plex Mono,monospace' font-size='18' font-weight='700' fill='%233DD9C0' text-anchor='middle'>LC</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'><circle cx='7' cy='8' r='3.5' fill='%236FB7A8'/><line x1='10' y1='11' x2='11' y2='19' stroke='%236FB7A8' stroke-width='2.5' stroke-linecap='round'/><circle cx='14' cy='23' r='3.5' fill='%236FB7A8'/><line x1='17' y1='21' x2='23' y2='16' stroke='%236FB7A8' stroke-width='2.5' stroke-linecap='round'/><circle cx='26' cy='13' r='3.5' fill='%236FB7A8'/></svg>">
 <link rel="stylesheet" href="css/style.css">
 <script>(function(){var t=localStorage.getItem('trc_theme');if(!t)t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t)})();</script>
 </head>
 <body>
 
 <div class="app-shell">
+  <div class="mobile-topbar">
+    <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <span class="mobile-title">Audit Log</span>
+    <button class="theme-toggle" id="themeToggleMobile" aria-label="Toggle theme" title="Toggle theme">
+      <span class="theme-toggle-track">
+        <svg class="theme-toggle-icon icon-moon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <span class="theme-toggle-thumb"></span>
+        <svg class="theme-toggle-icon icon-sun" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </span>
+    </button>
+  </div>
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">LC</div>
+      <div class="brand-mark"><svg viewBox="0 0 32 32" fill="none"><circle cx="7" cy="8" r="3.5" fill="currentColor"/><line x1="10" y1="11" x2="11" y2="19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="14" cy="23" r="3.5" fill="currentColor"/><line x1="17" y1="21" x2="23" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="26" cy="13" r="3.5" fill="currentColor"/></svg></div>
       <div class="brand-text"><strong>LedgerChain</strong><span>Recon System</span></div>
     </div>
     <nav class="nav">
@@ -73,6 +86,7 @@
       <div id="logPagination"></div>
     </div>
   </main>
+  <div class="sidebar-backdrop"></div>
 </div>
 
 <script src="js/store.js"></script>
