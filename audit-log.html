@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Audit Log · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0F1C'/><text x='16' y='22' font-family='IBM Plex Mono,monospace' font-size='18' font-weight='700' fill='%233DD9C0' text-anchor='middle'>LC</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,11 +17,11 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
-      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
-      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
-      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
-      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
+      <a href="dashboard.html" data-page="dashboard" data-label="Dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades" data-label="Trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions" data-label="Exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit" data-label="Audit Log"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
@@ -54,13 +55,14 @@
         <span class="text-faint mono" id="logCount" style="font-size:12px;"></span>
       </div>
       <div class="table-wrap">
-        <table>
+        <table id="auditTable">
           <thead>
-            <tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th><th>Hash</th></tr>
+            <tr><th data-sort="timestamp">Timestamp <span class="sort-arrow"></span></th><th data-sort="actor">Actor <span class="sort-arrow"></span></th><th data-sort="action">Action <span class="sort-arrow"></span></th><th data-sort="entity_type">Entity <span class="sort-arrow"></span></th><th data-sort="details">Details <span class="sort-arrow"></span></th><th>Hash</th></tr>
           </thead>
           <tbody id="logBody"></tbody>
         </table>
       </div>
+      <div id="logPagination"></div>
     </div>
   </main>
 </div>
@@ -74,6 +76,21 @@
   const filterActor = document.getElementById('filterActor');
   const logBody = document.getElementById('logBody');
   const logCount = document.getElementById('logCount');
+  const sortState = { col: null, asc: true };
+
+  function applySort(data) {
+    if (!sortState.col) return data;
+    return data.slice().sort((a, b) => {
+      const va = a[sortState.col];
+      const vb = b[sortState.col];
+      let cmp;
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb));
+      return sortState.asc ? cmp : -cmp;
+    });
+  }
+
+  const paginator = makePaginated(document.getElementById('logPagination'), 10, renderLog);
 
   function populateActionFilter() {
     const actions = [...new Set(Store.getAuditLog().map(a => a.action))];
@@ -82,19 +99,28 @@
   }
 
   function renderLog() {
-    let log = Store.getAuditLog().slice().reverse();
+    let log = Store.getAuditLog().slice();
     if (filterAction.value) log = log.filter(a => a.action === filterAction.value);
     const actorQuery = filterActor.value.trim().toLowerCase();
     if (actorQuery) log = log.filter(a => a.actor.toLowerCase().includes(actorQuery));
 
+    log = applySort(log);
+
     logCount.textContent = log.length + ' entries';
 
-    if (!log.length) {
+    const page = paginator.getPage();
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(log.length / pageSize));
+    const start = (Math.min(page, totalPages) - 1) * pageSize;
+    const pageItems = log.slice(start, start + pageSize);
+
+    if (!pageItems.length) {
       logBody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="glyph">≡</div><p>No matching audit entries.</p></div></td></tr>`;
+      paginator.render(0);
       return;
     }
 
-    logBody.innerHTML = log.map(a => `
+    logBody.innerHTML = pageItems.map(a => `
       <tr>
         <td class="mono text-dim">${formatDateTime(a.timestamp)}</td>
         <td>${escapeHtml(a.actor)}</td>
@@ -104,6 +130,8 @@
         <td class="mono text-faint" title="${escapeHtml(a.hash)}">${escapeHtml(a.hash.slice(0,8))}…</td>
       </tr>
     `).join('');
+
+    paginator.render(log.length);
   }
 
   document.getElementById('verifyBtn').addEventListener('click', () => {
@@ -136,9 +164,10 @@
     toast(intact ? 'Audit chain verified successfully.' : 'Audit chain integrity check failed.', intact ? undefined : 'error');
   });
 
-  filterAction.addEventListener('change', renderLog);
-  filterActor.addEventListener('input', renderLog);
+  filterAction.addEventListener('change', () => { paginator.reset(); renderLog(); });
+  filterActor.addEventListener('input', () => { paginator.reset(); renderLog(); });
 
+  makeSortable(document.getElementById('auditTable'), sortState, renderLog);
   populateActionFilter();
   renderLog();
 </script>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0F1C'/><text x='16' y='22' font-family='IBM Plex Mono,monospace' font-size='18' font-weight='700' fill='%233DD9C0' text-anchor='middle'>LC</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -18,11 +19,11 @@
 
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
-      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
-      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
-      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
-      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
+      <a href="dashboard.html" data-page="dashboard" data-label="Dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades" data-label="Trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions" data-label="Exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit" data-label="Audit Log"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
 
     <div class="sidebar-foot">
@@ -66,6 +67,11 @@
         <div class="stat-value" id="statLastRun" style="font-size:16px;">—</div>
         <div class="stat-delta" id="statLastRunMeta">No runs yet</div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">Match rate trend</h2>
+      <div class="sparkline-wrap" id="sparklineWrap"></div>
     </div>
 
     <div class="card">
@@ -116,6 +122,22 @@
     const last = runs[0];
     document.getElementById('statLastRun').textContent = last.source_a + ' vs ' + last.source_b;
     document.getElementById('statLastRunMeta').textContent = formatDateTime(last.run_date);
+  }
+
+  // Sparkline chart for last 5 runs
+  const sparkWrap = document.getElementById('sparklineWrap');
+  const recentRuns = runs.slice(0, 5);
+  if (recentRuns.length) {
+    sparkWrap.innerHTML = `<div class="sparkline">${recentRuns.map(r => {
+      const rate = r.total_compared ? Math.round((r.matched_count / (r.matched_count + r.mismatched_count || 1)) * 100) : 0;
+      return `<div class="spark-bar">
+        <div class="spark-bar-fill ${rate >= 90 ? 'good' : 'warn'}" style="height:${rate}%"></div>
+        <span class="spark-label">${rate}%</span>
+        <span class="spark-date">${formatDateTime(r.run_date).split('·')[0].trim()}</span>
+      </div>`;
+    }).join('')}</div>`;
+  } else {
+    sparkWrap.innerHTML = '<div class="empty-state"><div class="glyph">⇄</div><p>Run a reconciliation to see match rate trends.</p></div>';
   }
 
   const runsBody = document.getElementById('runsBody');

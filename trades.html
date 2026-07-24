@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trades · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0F1C'/><text x='16' y='22' font-family='IBM Plex Mono,monospace' font-size='18' font-weight='700' fill='%233DD9C0' text-anchor='middle'>LC</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,11 +17,11 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
-      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
-      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
-      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
-      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
+      <a href="dashboard.html" data-page="dashboard" data-label="Dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades" data-label="Trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions" data-label="Exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit" data-label="Audit Log"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
@@ -50,17 +51,24 @@
       <span class="text-faint mono" id="tradeCount" style="font-size:12px;"></span>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Trade ID</th><th>Source</th><th>Symbol</th><th>Side</th>
-            <th>Qty</th><th>Price</th><th>Trade date</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="tradesBody"></tbody>
-      </table>
-    </div>
+      <div class="table-wrap">
+        <table id="tradesTable">
+          <thead>
+            <tr>
+              <th data-sort="external_trade_id">Trade ID <span class="sort-arrow"></span></th>
+              <th data-sort="source_system">Source <span class="sort-arrow"></span></th>
+              <th data-sort="symbol">Symbol <span class="sort-arrow"></span></th>
+              <th data-sort="side">Side <span class="sort-arrow"></span></th>
+              <th data-sort="quantity" class="num">Qty <span class="sort-arrow"></span></th>
+              <th data-sort="price" class="num">Price <span class="sort-arrow"></span></th>
+              <th data-sort="trade_date">Trade date <span class="sort-arrow"></span></th>
+              <th data-sort="status">Status <span class="sort-arrow"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tradesBody"></tbody>
+        </table>
+      </div>
+      <div id="tradesPagination"></div>
   </main>
 </div>
 
@@ -123,6 +131,21 @@
   const filterSource = document.getElementById('filterSource');
   const filterSymbol = document.getElementById('filterSymbol');
   const countEl = document.getElementById('tradeCount');
+  const sortState = { col: null, asc: true };
+
+  function applySort(data) {
+    if (!sortState.col) return data;
+    return data.slice().sort((a, b) => {
+      const va = a[sortState.col];
+      const vb = b[sortState.col];
+      let cmp;
+      if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+      else cmp = String(va).localeCompare(String(vb));
+      return sortState.asc ? cmp : -cmp;
+    });
+  }
+
+  const paginator = makePaginated(document.getElementById('tradesPagination'), 10, render);
 
   function render() {
     let trades = Store.getTrades();
@@ -131,16 +154,23 @@
     if (src) trades = trades.filter(t => t.source_system === src);
     if (sym) trades = trades.filter(t => t.symbol.toUpperCase().includes(sym));
 
-    trades = trades.slice().sort((a,b) => a.external_trade_id.localeCompare(b.external_trade_id));
+    trades = applySort(trades);
 
     countEl.textContent = trades.length + ' record(s)';
 
-    if (!trades.length) {
+    const page = paginator.getPage();
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(trades.length / pageSize));
+    const start = (Math.min(page, totalPages) - 1) * pageSize;
+    const pageItems = trades.slice(start, start + pageSize);
+
+    if (!pageItems.length) {
       body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="glyph">▤</div><p>No trades match these filters.</p></div></td></tr>`;
+      paginator.render(0);
       return;
     }
 
-    body.innerHTML = trades.map(t => `
+    body.innerHTML = pageItems.map(t => `
       <tr>
         <td class="mono">${escapeHtml(t.external_trade_id)}</td>
         <td>${escapeHtml(t.source_system)}</td>
@@ -152,10 +182,12 @@
         <td>${pillForStatus(t.status)}</td>
       </tr>
     `).join('');
+
+    paginator.render(trades.length);
   }
 
-  filterSource.addEventListener('change', render);
-  filterSymbol.addEventListener('input', render);
+  filterSource.addEventListener('change', () => { paginator.reset(); render(); });
+  filterSymbol.addEventListener('input', () => { paginator.reset(); render(); });
 
   const modal = document.getElementById('addTradeModal');
   document.getElementById('openAddTrade').addEventListener('click', () => modal.classList.remove('hidden'));
@@ -179,6 +211,7 @@
     toast('Trade added.');
   });
 
+  makeSortable(document.getElementById('tradesTable'), sortState, render);
   render();
 </script>
 </body>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Exceptions · LedgerChain Recon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230A0F1C'/><text x='16' y='22' font-family='IBM Plex Mono,monospace' font-size='18' font-weight='700' fill='%233DD9C0' text-anchor='middle'>LC</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,11 +17,11 @@
     </div>
     <nav class="nav">
       <div class="nav-label">Workspace</div>
-      <a href="dashboard.html" data-page="dashboard"><span class="nav-ico">◉</span> Dashboard</a>
-      <a href="trades.html" data-page="trades"><span class="nav-ico">▤</span> Trades</a>
-      <a href="reconciliation.html" data-page="reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
-      <a href="exceptions.html" data-page="exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
-      <a href="audit-log.html" data-page="audit"><span class="nav-ico">≡</span> Audit Log</a>
+      <a href="dashboard.html" data-page="dashboard" data-label="Dashboard"><span class="nav-ico">◉</span> Dashboard</a>
+      <a href="trades.html" data-page="trades" data-label="Trades"><span class="nav-ico">▤</span> Trades</a>
+      <a href="reconciliation.html" data-page="reconciliation" data-label="Reconciliation"><span class="nav-ico">⇄</span> Reconciliation</a>
+      <a href="exceptions.html" data-page="exceptions" data-label="Exceptions"><span class="nav-ico">⚠</span> Exceptions</a>
+      <a href="audit-log.html" data-page="audit" data-label="Audit Log"><span class="nav-ico">≡</span> Audit Log</a>
     </nav>
     <div class="sidebar-foot">
       <div class="user-chip" id="sessionChip">--</div>
@@ -57,16 +58,17 @@
     </div>
 
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Symbol</th><th>Type</th><th>Source A</th><th>Source B</th>
-            <th>Raised</th><th>Status</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="excBody"></tbody>
-      </table>
-    </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th><th>Type</th><th>Source A</th><th>Source B</th>
+              <th>Raised</th><th>Status</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="excBody"></tbody>
+        </table>
+      </div>
+      <div id="excPagination"></div>
   </main>
 </div>
 
@@ -101,6 +103,8 @@
   const excBody = document.getElementById('excBody');
   const excCount = document.getElementById('excCount');
 
+  const paginator = makePaginated(document.getElementById('excPagination'), 10, render);
+
   function render() {
     let list = Store.getExceptions().slice().reverse();
     if (filterStatus.value) list = list.filter(e => e.status === filterStatus.value);
@@ -108,12 +112,19 @@
 
     excCount.textContent = list.length + ' record(s)';
 
-    if (!list.length) {
+    const page = paginator.getPage();
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+    const start = (Math.min(page, totalPages) - 1) * pageSize;
+    const pageItems = list.slice(start, start + pageSize);
+
+    if (!pageItems.length) {
       excBody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="glyph">⚠</div><p>No exceptions match these filters.</p></div></td></tr>`;
+      paginator.render(0);
       return;
     }
 
-    excBody.innerHTML = list.map(e => `
+    excBody.innerHTML = pageItems.map(e => `
       <tr>
         <td class="mono">${escapeHtml(e.symbol)}</td>
         <td>${pillForExceptionType(e.exception_type)}</td>
@@ -128,6 +139,8 @@
     excBody.querySelectorAll('[data-open]').forEach(btn => {
       btn.addEventListener('click', () => openResolve(btn.dataset.open));
     });
+
+    paginator.render(list.length);
   }
 
   function openResolve(id) {
@@ -165,8 +178,8 @@
   document.getElementById('resolveBtn').addEventListener('click', () => submitResolution('RESOLVED'));
   document.getElementById('ignoreBtn').addEventListener('click', () => submitResolution('IGNORED'));
 
-  filterStatus.addEventListener('change', render);
-  filterType.addEventListener('change', render);
+  filterStatus.addEventListener('change', () => { paginator.reset(); render(); });
+  filterType.addEventListener('change', () => { paginator.reset(); render(); });
 
   render();
 </script>
